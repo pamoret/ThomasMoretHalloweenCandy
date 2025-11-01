@@ -48,12 +48,19 @@ function setupYearFilter() {
     });
   });
 
-  const sortedYears = Array.from(years).sort((a, b) => a - b);
+  const sortedYears = Array.from(years).sort((a, b) => b - a);
   yearFilter.innerHTML = [`<option value="all">All Years</option>`,
     ...sortedYears.map((year) => `<option value="${year}">${year}</option>`),
   ].join('');
 
-  yearFilter.value = 'all';
+  if (sortedYears.length === 0) {
+    yearFilter.value = 'all';
+    return;
+  }
+
+  const currentYear = new Date().getFullYear();
+  const defaultYear = sortedYears.includes(currentYear) ? currentYear : sortedYears[0];
+  yearFilter.value = String(defaultYear);
 }
 
 function matchesYear(collection, year) {
@@ -334,6 +341,10 @@ function initializeMap() {
   markerLayer = L.layerGroup().addTo(map);
 }
 
+function formatYearLabel(year) {
+  return year === 'all' ? 'All Years Combined' : String(year);
+}
+
 function updateMap(year) {
   markerLayer.clearLayers();
 
@@ -348,12 +359,23 @@ function updateMap(year) {
       return;
     }
 
-    const { latitude, longitude, city, state, country } = child.location;
+    const {
+      latitude,
+      longitude,
+      city,
+      state,
+      country,
+      street,
+      postalCode,
+    } = child.location;
+    const locationLines = [street, city, state, postalCode]
+      .filter(Boolean)
+      .join(', ');
     const popupContent = `
       <strong>${child.name}</strong><br />
-      ${city}, ${state}<br />
+      ${locationLines || `${city}, ${state}`}<br />
       ${country}<br />
-      <span style="color: #ff6f1d; font-weight: 700;">${totalForYear} pieces in ${year}</span>
+      <span style="color: #ff6f1d; font-weight: 700;">${totalForYear} pieces in ${formatYearLabel(year)}</span>
     `;
 
     const marker = L.circleMarker([latitude, longitude], {
