@@ -55,6 +55,44 @@
         </div>
       </section>
 
+      <section id="familyHub" class="panel hidden">
+        <header class="panel-header">
+          <h2>Family Candy HQ</h2>
+          <p class="panel-subtitle">
+            Build a candy universe for every kiddo in your crew. Plan for just
+            <strong>$2 per child</strong> when you upgrade your family pass with Stripe.
+          </p>
+        </header>
+        <div class="family-grid">
+          <article class="card family-summary">
+            <h3>Sweet Snapshot</h3>
+            <p id="familySummary" class="metric">Add your first kid to begin.</p>
+            <p id="priceEstimate" class="metric-sub">$0 family pass estimate</p>
+            <div id="candyLimitNotice" class="limit-banner hidden"></div>
+          </article>
+          <article class="card">
+            <h3>Kid Leaderboard</h3>
+            <ul id="kidLeaderboard" class="leaderboard"></ul>
+          </article>
+          <article class="card">
+            <h3>Achievement Cauldron</h3>
+            <ul id="achievementBoard" class="badge-list"></ul>
+          </article>
+          <article class="card learning-card">
+            <h3>Learning Prompts</h3>
+            <ul id="learningPrompts" class="prompt-list"></ul>
+          </article>
+        </div>
+        <div class="quest-card">
+          <div>
+            <h3>Tonight's Candy Quest</h3>
+            <p id="familyQuest">Sign in to conjure a family quest.</p>
+          </div>
+          <button id="newQuest" class="btn secondary">Spin new quest</button>
+        </div>
+        <div class="moodboard" id="candyMoodboard"></div>
+      </section>
+
       <section id="paywall" class="paywall hidden">
         <div class="paywall-card">
           <h3>Yearly Treat Pass</h3>
@@ -92,6 +130,38 @@
             <button id="addCandy" class="btn secondary">+ Add Candy</button>
           </div>
         </header>
+        <div id="candyFilters" class="filter-bar hidden">
+          <label>
+            <span>Star rating</span>
+            <select id="ratingFilter">
+              <option value="all">All</option>
+              <option value="5">⭐️⭐️⭐️⭐️⭐️</option>
+              <option value="4">⭐️⭐️⭐️⭐️</option>
+              <option value="3">⭐️⭐️⭐️</option>
+              <option value="2">⭐️⭐️</option>
+              <option value="1">⭐️</option>
+              <option value="0">Unrated</option>
+            </select>
+          </label>
+          <label>
+            <span>Year</span>
+            <select id="yearFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <label>
+            <span>Candy type</span>
+            <select id="typeFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <label class="search-field">
+            <span>Search notes</span>
+            <input id="searchFilter" type="search" placeholder="Chocolate, peanut, …" />
+          </label>
+          <button id="clearFilters" class="btn ghost">Reset</button>
+        </div>
+        <p id="candyFilterSummary" class="filter-summary hidden"></p>
         <div id="candyEmptyState" class="empty-state hidden">
           <p>Select a kid to start logging their treats.</p>
         </div>
@@ -101,6 +171,7 @@
               <tr>
                 <th>Candy</th>
                 <th>Count</th>
+                <th>Year</th>
                 <th>Rating</th>
                 <th>Notes</th>
                 <th>Updated</th>
@@ -212,6 +283,10 @@
           <input type="number" id="candyCount" min="0" required />
         </label>
         <label class="input-field">
+          <span>Year</span>
+          <input type="number" id="candyYear" min="1990" max="2100" />
+        </label>
+        <label class="input-field">
           <span>Star rating</span>
           <div id="ratingSelector" class="rating-selector"></div>
         </label>
@@ -244,6 +319,7 @@
       <tr>
         <td class="candy-type"></td>
         <td class="candy-count"></td>
+        <td class="candy-year"></td>
         <td class="candy-rating"></td>
         <td class="candy-notes"></td>
         <td class="candy-updated"></td>
