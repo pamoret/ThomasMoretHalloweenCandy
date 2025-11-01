@@ -1238,9 +1238,9 @@ function renderKidCards() {
     instance.querySelector('.kid-age').textContent = age
       ? `${age} years old`
       : 'Age unknown';
-    const totalCandy = kid.candies.reduce((sum, candy) => sum + (candy.count ?? 0), 0);
+    const totalCandy = kid.candies.reduce((sum, candy) => sum + (Number(candy.count) || 0), 0);
     const favorite = kid.candies
-      .map((candy) => ({ name: getCandyDisplayName(candy), total: candy.count ?? 0 }))
+      .map((candy) => ({ name: getCandyDisplayName(candy), total: Number(candy.count) || 0 }))
       .sort((a, b) => b.total - a.total)[0];
     const rated = kid.candies.filter((candy) => (candy.rating ?? 0) > 0);
     const avgRating = rated.length
@@ -1309,7 +1309,7 @@ function renderCandyTable() {
     const row = candyRowTemplate.content.firstElementChild.cloneNode(true);
     row.dataset.id = candy.id;
     row.querySelector('.candy-type').textContent = candy.displayName ?? candy.type;
-    row.querySelector('.candy-count').textContent = candy.count ?? 0;
+    row.querySelector('.candy-count').textContent = Number(candy.count ?? 0);
     row.querySelector('.candy-year').textContent = deriveCandyYear(candy);
     row.querySelector('.candy-rating').textContent = renderRating(candy.rating);
     row.querySelector('.candy-notes').textContent = candy.notes || '—';
@@ -1382,11 +1382,11 @@ function computeAggregates() {
   const colors = new Map();
 
   state.kids.forEach((kid) => {
-    const kidTotal = kid.candies.reduce((sum, candy) => sum + (candy.count ?? 0), 0);
+    const kidTotal = kid.candies.reduce((sum, candy) => sum + (Number(candy.count) || 0), 0);
     byKid.set(kid.data.name, kidTotal);
     kid.candies.forEach((candy) => {
       const previous = totals.get(candy.displayName) ?? 0;
-      totals.set(candy.displayName, previous + (candy.count ?? 0));
+      totals.set(candy.displayName, previous + (Number(candy.count) || 0));
       const ratingEntry = ratings.get(candy.displayName) ?? { total: 0, count: 0 };
       if (candy.rating) {
         ratingEntry.total += candy.rating;
@@ -1395,7 +1395,7 @@ function computeAggregates() {
       ratings.set(candy.displayName, ratingEntry);
       if (candy.colorHex) {
         const colorEntry = colors.get(candy.colorHex) ?? { total: 0, name: candy.colorName ?? 'Candy' };
-        colorEntry.total += candy.count ?? 0;
+        colorEntry.total += Number(candy.count) || 0;
         colors.set(candy.colorHex, colorEntry);
       }
     });
