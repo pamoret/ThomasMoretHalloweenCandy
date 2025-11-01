@@ -1,147 +1,55 @@
 # Spooky Candy Cloud
 
-Spooky Candy Cloud is a Firebase-powered Halloween dashboard that lets families track
-and rate candy collections for each kiddo. Sign in with Google, log candy hauls,
-see neighborhood favorites by zip code, and manage annual subscriptions that unlock
-advanced insights.
+Spooky Candy Cloud is a family-friendly Halloween dashboard where parents can manage kid profiles, log every candy discovery, and celebrate learning moments together. The experience now runs entirely in the browser with a built-in demo mode so you can explore the hub without configuring Firebase.
 
 ## Features
 
-- Google Sign-In via Firebase Authentication
-- Guided onboarding that captures the family's zip code
-- Automatic seeding of a whimsical candy catalog for every new account
-- Kid profiles with costumes, birth years, and total candy tracking
-- Candy log with counts, tasting notes, and ⭐ ratings
-- Zip code insights that surface the most popular treats locally
-- Annual paywall toggle with placeholder billing hook for $3/year renewals
-- Firebase-friendly structure that can be deployed to Firebase Hosting through GitHub Actions
+- **Family Candy HQ** – roster overview, sparkle score, quest board, and conversation starters for parents.
+- **Kid management** – add/edit kid cards with costumes, birth years, and automatic summary stats.
+- **Candy vault** – track pieces, ratings, and tasting notes per kid with rich filtering (star rating, year, type, search).
+- **Smart limits & paywalls** – simulate $2 Kid Passes and candy vault upgrades, plus a yearly subscription toggle.
+- **Neighborhood insights** – charts and tables (powered by Chart.js) that visualize favorite treats once the pass is active.
+- **Local-first storage** – all data persists in `localStorage`, and a sample family is auto-seeded for demos and screenshots.
 
 ## Project structure
 
 ```
 .
 ├── assets
-│   ├── app.js                # Main application logic (Firebase, UI, charts)
-│   ├── firebase-config.js    # Placeholder config (update with your Firebase project)
+│   ├── app.js                # Main application logic (local storage, UI, charts)
+│   ├── firebase-config.js    # Optional: hook up a real Firebase project if desired
 │   ├── hero-monsters.svg     # Hero illustration
 │   ├── logo.svg              # App logo
 │   └── styles.css            # Spooky interface styling
 ├── data
-│   └── defaultCandyTypes.json # Seed data for user candy catalogs
+│   └── defaultCandyTypes.json # Seed data for candy catalog options
 └── index.html                # Landing page and app shell
 ```
 
-## Local setup
+## Quick start
 
-1. **Install the Firebase CLI** (needed for hosting deploys):
-
-   ```bash
-   npm install -g firebase-tools
-   ```
-
-2. **Create a Firebase project** (if you don’t already have one) and enable:
-
-   - Authentication → Sign-in method → Google
-   - Firestore Database (in Native mode)
-
-3. **Update Firebase configuration**
-
-   Copy the config snippet from **Project settings → General → Your apps** and paste
-   it into `assets/firebase-config.js`.
-
-4. **Serve locally**
+1. Install dependencies (none required!)
+2. Serve the site locally using any static server, for example:
 
    ```bash
-   firebase login
-   firebase init hosting
-   # choose "Use an existing project" and select yours
-   # set public directory to "." and configure as a single-page app (yes)
-   firebase emulators:start
+   python -m http.server 8000
    ```
 
-   Then open the provided localhost URL.
+3. Visit `http://localhost:8000/` in your browser. The demo account signs in automatically, and you can explore every module immediately.
 
-## Firestore data model
+## Optional Firebase integration
 
-```
-users/{uid}
-  displayName
-  email
-  photoURL
-  zipCode
-  subscriptionStatus ('active' | 'expired' | 'past_due')
-  subscriptionExpiry (timestamp)
-  createdAt (timestamp)
-  lastLoginAt (timestamp)
-  lastPaymentAt (timestamp)
+The previous Firebase-powered workflow is still achievable. To reconnect Firestore and Google Sign-In:
 
-users/{uid}/catalog/{candyId}
-  name, emoji, colorHex, colorName, description, defaultRating
-
-users/{uid}/kids/{kidId}
-  name
-  favoriteCostume
-  birthYear
-  createdAt
-  updatedAt
-
-users/{uid}/kids/{kidId}/candies/{logId}
-  catalogId
-  displayName
-  count
-  rating
-  notes
-  colorHex
-  colorName
-  emoji
-  createdAt
-  updatedAt
-
-zipStats/{zip}/contributors/{uid}
-  candyCounts (map of candy name -> total pieces)
-  totalPieces
-  updatedAt
-```
-
-## Subscription paywall
-
-The UI exposes an “Activate my pass” button that currently marks the user’s
-subscription as active for one year. Replace this logic with your preferred billing
-provider (Stripe, Lemon Squeezy, etc.) and, upon successful payment, call the same
-Firestore update used in `handleActivateSubscription()`.
-
-Suggested path:
-
-1. Implement Firebase Cloud Functions that listen for webhook events from your billing
-   partner and update the `users/{uid}` document accordingly.
-2. Restrict paywall access by updating security rules so only active subscribers can
-   read analytics documents.
-
-## Zip code insights
-
-Each time a user logs candy, their totals are published to `zipStats/{zip}/contributors`.
-This allows you to aggregate per-zip favorites in Firestore or BigQuery. The client
-fetches contributor docs and assembles the “Popular by Zip” table. Consider exporting
-this collection to BigQuery for richer analytics by city or metro area.
-
-## Deploying with GitHub & Firebase Hosting
-
-1. **Connect the repo** to Firebase Hosting (Hosting → Add site → GitHub integration).
-2. **Select the `cloud-hosting` branch** as the production branch.
-3. Firebase will generate a GitHub Actions workflow that runs `firebase deploy` on every
-   push to `cloud-hosting`.
-
-To deploy manually:
-
-```bash
-firebase deploy --only hosting
-```
+1. Update `assets/firebase-config.js` with your Firebase project keys.
+2. Replace the local storage helpers in `assets/app.js` with Firebase SDK calls that match your data model.
+3. Wire the upgrade buttons (`handleActivateSubscription`, `handleKidUpgradeConfirm`, `handleCandyUpgradeConfirm`) to Stripe or your billing provider.
 
 ## Customization ideas
 
-- Add sharing links for each kid’s candy haul recap
-- Integrate Firestore listeners with Cloud Functions to compute city-wide leaderboards
-- Gate new premium analytics behind additional subscription tiers
-- Gamify the experience with achievements for top-rated candies or new zip codes visited
+- Add delete buttons for candy rows or kid cards when connecting to a backend.
+- Extend the chart palette with seasonal color themes or kid-specific comparison modes.
+- Sync the simulated paywall toggles with a production-ready subscription service.
+- Export the family snapshot to a printable “Candy Chronicle” PDF for sharing with relatives.
 
 Enjoy building a sweet, spooky experience! 🎃
