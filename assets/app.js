@@ -58,8 +58,10 @@ const state = {
     type: 'all',
     search: '',
   },
+  activePanel: 'family',
   currentQuest: null,
   familyStats: null,
+  spotlightKidId: null,
   unsubscribers: {
     kids: null,
     catalog: null,
@@ -126,6 +128,20 @@ const learningPromptsEl = document.getElementById('learningPrompts');
 const familyQuestEl = document.getElementById('familyQuest');
 const newQuestBtn = document.getElementById('newQuest');
 const candyMoodboardEl = document.getElementById('candyMoodboard');
+const familyNav = document.getElementById('familyNav');
+const panelButtons = familyNav ? familyNav.querySelectorAll('[data-panel-target]') : [];
+const spotlightKidEl = document.getElementById('spotlightKid');
+const cycleSpotlightBtn = document.getElementById('cycleSpotlight');
+const familyStarMeterEl = document.getElementById('familyStarMeter');
+const familyTimelineEl = document.getElementById('familyTimeline');
+const familyClassroomEl = document.getElementById('familyClassroom');
+const familyGoalsEl = document.getElementById('familyGoals');
+const panelRegistry = {
+  family: familyHubSection,
+  kids: kidManagerSection,
+  candy: candyManagerSection,
+  insights: insightsSection,
+};
 
 const zipDialog = document.getElementById('zipDialog');
 const zipInput = document.getElementById('zipInput');
@@ -357,12 +373,27 @@ function updateFilterSummary(totalCount, visibleCount) {
   showElement(candyFilterSummaryEl);
 }
 
-function countTotalCandyEntries() {
-  let total = 0;
+function collectUniqueCandyIdentifiers({ excludeCandyId = null } = {}) {
+  const identifiers = new Set();
   state.kids.forEach((kid) => {
-    total += kid.candies?.length ?? 0;
+    (kid.candies ?? []).forEach((candy) => {
+      if (excludeCandyId && candy.id === excludeCandyId) {
+        return;
+      }
+      const identifier = getCandyIdentifier(candy);
+      if (identifier) {
+        identifiers.add(identifier);
+      }
+    });
   });
-  return total;
+  return identifiers;
+}
+
+function countUniqueCandyTypes() {
+  if (state.familyStats?.uniqueTypeCount != null) {
+    return state.familyStats.uniqueTypeCount;
+  }
+  return collectUniqueCandyIdentifiers().size;
 }
 
 function selectBadge(totalPieces) {
@@ -383,22 +414,44 @@ function computeFamilyStats() {
     averageRating: 0,
     leaderboard: [],
     moodboard: [],
+    ratingBands: [],
+    timeline: [],
+    uniqueTypeCount: 0,
+    totalRatedEntries: 0,
+    maxPieces: 0,
+    timelineMaxTotal: 0,
   };
   const ratingTotals = { total: 0, count: 0 };
   const candyTotals = new Map();
+  const ratingBandMap = new Map([
+    [5, 0],
+    [4, 0],
+    [3, 0],
+    [2, 0],
+    [1, 0],
+    [0, 0],
+  ]);
+  const timelineMap = new Map();
+  const uniqueTypes = new Set();
 
-  state.kids.forEach((kid) => {
+  state.kids.forEach((kid, id) => {
     const candies = kid.candies ?? [];
     const pieces = candies.reduce((sum, candy) => sum + (Number(candy.count) || 0), 0);
     const entry = {
+      id,
       name: kid.data?.name ?? 'Kid',
       pieces,
       entries: candies.length,
       favoriteCandy: null,
       averageRating: 0,
       badge: selectBadge(pieces),
+      age: computeAge(kid.data?.birthYear) ?? null,
+      uniqueTypes: 0,
+      topRatedCandy: null,
+      lastCandy: null,
     };
     const perCandy = new Map();
+    const kidTypes = new Set();
     let kidRatingTotal = 0;
     let kidRatingCount = 0;
     candies.forEach((candy) => {
@@ -413,36 +466,100 @@ function computeFamilyStats() {
         kidRatingCount += 1;
       }
       const displayName = getCandyDisplayName(candy);
-      const candyKey = getCandyIdentifier(candy) || displayName;
+      const identifier = getCandyIdentifier(candy) || displayName;
+      kidTypes.add(identifier);
+      uniqueTypes.add(identifier);
+      const bandKey = ratingValue > 0 ? ratingValue : 0;
+      ratingBandMap.set(bandKey, (ratingBandMap.get(bandKey) ?? 0) + 1);
+
+      const year = deriveCandyYear(candy);
+      const timelineEntry =
+        timelineMap.get(year) ?? { total: 0, ratedCount: 0, favorites: new Map(), uniqueTypes: new Set() };
+      timelineEntry.total += count;
+      if (ratingValue > 0) {
+        timelineEntry.ratedCount += 1;
+        const existingScore = timelineEntry.favorites.get(displayName) ?? 0;
+        timelineEntry.favorites.set(displayName, existingScore + ratingValue);
+      }
+      timelineEntry.uniqueTypes.add(identifier);
+      timelineMap.set(year, timelineEntry);
+
       const existingKid = perCandy.get(displayName) ?? 0;
       perCandy.set(displayName, existingKid + count);
 
-      const existing = candyTotals.get(candyKey) ?? {
+      const existing = candyTotals.get(identifier) ?? {
         name: displayName,
         total: 0,
         ratingTotal: 0,
         ratingCount: 0,
         emoji: candy.emoji ?? '🍬',
-        latestYear: deriveCandyYear(candy),
+        latestYear: year,
       };
       existing.total += count;
       if (ratingValue > 0) {
         existing.ratingTotal += ratingValue;
         existing.ratingCount += 1;
       }
-      existing.latestYear = Math.max(existing.latestYear, deriveCandyYear(candy));
-      candyTotals.set(candyKey, existing);
+      existing.latestYear = Math.max(existing.latestYear, year);
+      candyTotals.set(identifier, existing);
     });
     if (kidRatingCount > 0) {
       entry.averageRating = Number((kidRatingTotal / kidRatingCount).toFixed(2));
     }
     const favorite = Array.from(perCandy.entries()).sort((a, b) => b[1] - a[1])[0];
     entry.favoriteCandy = favorite ? favorite[0] : null;
+    entry.uniqueTypes = kidTypes.size;
+    const topRated = candies
+      .filter((candy) => (candy.rating ?? 0) > 0)
+      .sort((a, b) => {
+        const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
+        if (ratingDiff !== 0) return ratingDiff;
+        return (b.count ?? 0) - (a.count ?? 0);
+      })[0];
+    if (topRated) {
+      entry.topRatedCandy = {
+        name: getCandyDisplayName(topRated),
+        rating: topRated.rating ?? 0,
+        emoji: topRated.emoji ?? '🍬',
+      };
+    }
+    const recent = candies[0];
+    if (recent) {
+      entry.lastCandy = {
+        name: getCandyDisplayName(recent),
+        when: formatTimestamp(recent.updatedAt ?? recent.createdAt),
+      };
+    }
     stats.leaderboard.push(entry);
   });
 
   stats.leaderboard.sort((a, b) => b.pieces - a.pieces);
+  stats.maxPieces = stats.leaderboard.length > 0 ? stats.leaderboard[0].pieces : 0;
   stats.averageRating = ratingTotals.count > 0 ? Number((ratingTotals.total / ratingTotals.count).toFixed(2)) : 0;
+  stats.ratingBands = [5, 4, 3, 2, 1, 0].map((stars) => ({
+    stars,
+    count: ratingBandMap.get(stars) ?? 0,
+  }));
+  stats.totalRatedEntries = stats.ratingBands.reduce(
+    (sum, item) => (item.stars > 0 ? sum + item.count : sum),
+    0,
+  );
+  stats.uniqueTypeCount = uniqueTypes.size;
+  stats.timeline = Array.from(timelineMap.entries())
+    .map(([year, data]) => {
+      const topCandyEntry = Array.from(data.favorites.entries()).sort((a, b) => b[1] - a[1])[0];
+      return {
+        year: Number(year),
+        total: data.total,
+        ratedCount: data.ratedCount,
+        topCandy: topCandyEntry ? topCandyEntry[0] : null,
+        uniqueTypes: data.uniqueTypes.size,
+      };
+    })
+    .sort((a, b) => b.year - a.year)
+    .slice(0, 6);
+  stats.timelineMaxTotal = stats.timeline.reduce((max, entry) => Math.max(max, entry.total), 0);
+
   stats.moodboard = Array.from(candyTotals.values())
     .sort((a, b) => b.total - a.total)
     .slice(0, 6)
@@ -473,6 +590,15 @@ function generateLearningPrompts(stats) {
   }
   if (stats.averageRating > 0) {
     prompts.push(`Graph every candy rated above ${stats.averageRating.toFixed(1)} stars and compare flavors.`);
+  }
+  const fiveStarBand = stats.ratingBands?.find((band) => band.stars === 5);
+  if (fiveStarBand && fiveStarBand.count > 0) {
+    prompts.push(`Taste-test your ${fiveStarBand.count} five-star treats and rank them from smoothest to crunchiest.`);
+  }
+  if (stats.timeline.length > 1) {
+    const newest = stats.timeline[0];
+    const previous = stats.timeline[1];
+    prompts.push(`Calculate how many more pieces you collected in ${newest.year} (${newest.total}) than ${previous.year} (${previous.total}).`);
   }
   return prompts.slice(0, 3);
 }
@@ -543,6 +669,301 @@ function renderMoodboard(items) {
   candyMoodboardEl.appendChild(fragment);
 }
 
+function renderStarMeter(bands, totalEntries) {
+  if (!familyStarMeterEl) {
+    return;
+  }
+  familyStarMeterEl.innerHTML = '';
+  if (!bands || bands.length === 0 || bands.every((band) => band.count === 0)) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Log candy ratings to unlock the star meter.';
+    familyStarMeterEl.appendChild(empty);
+    return;
+  }
+  const total = totalEntries > 0 ? totalEntries : bands.reduce((sum, item) => sum + item.count, 0);
+  bands.forEach((band) => {
+    const row = document.createElement('div');
+    row.className = 'star-row';
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = band.stars === 0 ? 'Unrated' : `${band.stars}★`;
+    const bar = document.createElement('div');
+    bar.className = 'star-bar';
+    const fill = document.createElement('span');
+    const percentRaw = total > 0 ? (band.count / total) * 100 : 0;
+    const width = percentRaw > 0 && percentRaw < 10 ? 10 : percentRaw;
+    fill.style.width = `${Math.min(100, width)}%`;
+    fill.style.opacity = percentRaw > 0 ? '1' : '0.2';
+    fill.title = `${band.count} entries`;
+    bar.appendChild(fill);
+    const value = document.createElement('span');
+    value.className = 'value';
+    const percentDisplay = percentRaw > 0 ? Math.round(percentRaw) : 0;
+    value.textContent = `${band.count} · ${percentDisplay}%`;
+    row.append(label, bar, value);
+    familyStarMeterEl.appendChild(row);
+  });
+}
+
+function renderTimeline(timeline, maxTotal = 0) {
+  if (!familyTimelineEl) {
+    return;
+  }
+  familyTimelineEl.innerHTML = '';
+  if (!timeline || timeline.length === 0) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Add candy to trace your yearly trail.';
+    familyTimelineEl.appendChild(empty);
+    return;
+  }
+  const effectiveMax = Math.max(maxTotal, ...timeline.map((entry) => entry.total), 1);
+  timeline.forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = 'timeline-row';
+    const year = document.createElement('span');
+    year.textContent = entry.year;
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const fill = document.createElement('span');
+    fill.className = 'fill';
+    const percentRaw = (entry.total / effectiveMax) * 100;
+    const width = percentRaw > 0 && percentRaw < 12 ? 12 : percentRaw;
+    fill.style.width = `${Math.min(100, width)}%`;
+    fill.style.opacity = percentRaw > 0 ? '1' : '0.2';
+    bar.appendChild(fill);
+    const note = document.createElement('span');
+    note.className = 'note';
+    const favoriteText = entry.topCandy ? ` · ⭐ ${entry.topCandy}` : '';
+    note.textContent = `${entry.total} pcs${favoriteText}`;
+    bar.appendChild(note);
+    bar.title = entry.topCandy ? `Top candy: ${entry.topCandy}` : `${entry.total} pieces logged`;
+    row.append(year, bar);
+    familyTimelineEl.appendChild(row);
+  });
+}
+
+function buildClassroomLessons(stats) {
+  const lessons = [];
+  if (stats.totalPieces > 0) {
+    const tens = Math.max(1, Math.floor(stats.totalPieces / 10));
+    lessons.push({
+      title: 'Math mission',
+      text: `Bundle your ${stats.totalPieces} pieces into ${tens} groups of ten and count the leftovers together.`,
+    });
+  }
+  const fiveStarBand = stats.ratingBands?.find((band) => band.stars === 5);
+  if (fiveStarBand && fiveStarBand.count > 0) {
+    lessons.push({
+      title: 'Taste test lab',
+      text: `Design a taste test for your ${fiveStarBand.count} five-star treats and describe each flavor.`,
+    });
+  }
+  if (stats.timeline.length > 0) {
+    const latest = stats.timeline[0];
+    lessons.push({
+      title: 'History compare',
+      text: `Chart how ${latest.year}'s haul of ${latest.total} pieces compares to earlier years.`,
+    });
+  }
+  if (stats.moodboard.length > 0) {
+    const spotlight = stats.moodboard[0];
+    lessons.push({
+      title: 'Flavor vocabulary',
+      text: `Brainstorm adjectives that match ${spotlight.name} — texture, color, and taste all count!`,
+    });
+  }
+  const fallbacks = [
+    {
+      title: 'Imagination sketch',
+      text: 'Draw the wrapper of your dream candy creation and label its secret ingredients.',
+    },
+    {
+      title: 'Kindness challenge',
+      text: 'Pick one candy to gift a neighbor and practice what you will say when you share it.',
+    },
+  ];
+  while (lessons.length < 3 && fallbacks.length > 0) {
+    lessons.push(fallbacks.shift());
+  }
+  return lessons.slice(0, 3);
+}
+
+function renderClassroom(lessons) {
+  if (!familyClassroomEl) {
+    return;
+  }
+  familyClassroomEl.innerHTML = '';
+  if (!lessons || lessons.length === 0) {
+    const empty = document.createElement('li');
+    empty.textContent = 'Add candy to receive guided learning activities.';
+    familyClassroomEl.appendChild(empty);
+    return;
+  }
+  lessons.forEach((lesson) => {
+    const item = document.createElement('li');
+    const title = document.createElement('strong');
+    title.textContent = lesson.title;
+    const body = document.createElement('span');
+    body.textContent = lesson.text;
+    item.append(title, body);
+    familyClassroomEl.appendChild(item);
+  });
+}
+
+function buildFamilyGoals(stats) {
+  const goals = [];
+  const remaining = Math.max(0, FREE_CANDY_LIMIT - stats.uniqueTypeCount);
+  if (remaining > 0) {
+    const noun = remaining === 1 ? 'type' : 'types';
+    goals.push({
+      title: 'Discovery goal',
+      text: `Log ${remaining} new candy ${noun} before the free plan limit unlocks the Stripe paywall.`,
+    });
+  } else {
+    goals.push({
+      title: 'Upgrade goal',
+      text: 'You reached the free plan ceiling! Activate your Stripe family pass to keep adding new treats.',
+    });
+  }
+  if (stats.leaderboard.length > 1) {
+    const top = stats.leaderboard[0];
+    const runner = stats.leaderboard[1];
+    const diff = Math.max(0, top.pieces - runner.pieces) + 1;
+    goals.push({
+      title: 'Team challenge',
+      text: `${runner.name} can catch ${top.name} by logging ${diff} more pieces together.`,
+    });
+  } else if (stats.leaderboard.length === 1) {
+    const solo = stats.leaderboard[0];
+    goals.push({
+      title: 'Sharing mission',
+      text: `Plan how ${solo.name} would split ${solo.pieces} pieces fairly with a friend or sibling.`,
+    });
+  }
+  if (stats.timeline.length >= 2) {
+    const newest = stats.timeline[0];
+    const previous = stats.timeline[1];
+    goals.push({
+      title: 'Time traveler',
+      text: `Compare ${previous.year} (${previous.total} pcs) to ${newest.year} (${newest.total} pcs) and predict next year.`,
+    });
+  }
+  return goals.slice(0, 3);
+}
+
+function renderFamilyGoals(goals) {
+  if (!familyGoalsEl) {
+    return;
+  }
+  familyGoalsEl.innerHTML = '';
+  if (!goals || goals.length === 0) {
+    const empty = document.createElement('li');
+    empty.textContent = 'Add candy entries to generate a family goal list.';
+    familyGoalsEl.appendChild(empty);
+    return;
+  }
+  goals.forEach((goal) => {
+    const item = document.createElement('li');
+    const title = document.createElement('strong');
+    title.textContent = goal.title;
+    const body = document.createElement('span');
+    body.textContent = goal.text;
+    item.append(title, body);
+    familyGoalsEl.appendChild(item);
+  });
+}
+
+function getSpotlightEntry(stats, advance = false) {
+  if (!stats || stats.leaderboard.length === 0) {
+    state.spotlightKidId = null;
+    return null;
+  }
+  const ids = stats.leaderboard.map((entry) => entry.id);
+  if (advance && state.spotlightKidId && ids.includes(state.spotlightKidId)) {
+    const currentIndex = ids.indexOf(state.spotlightKidId);
+    const nextIndex = (currentIndex + 1) % ids.length;
+    state.spotlightKidId = ids[nextIndex];
+  }
+  if (!state.spotlightKidId || !ids.includes(state.spotlightKidId)) {
+    state.spotlightKidId = ids[0];
+  }
+  return stats.leaderboard.find((entry) => entry.id === state.spotlightKidId) ?? null;
+}
+
+function renderSpotlight(stats) {
+  if (!spotlightKidEl) {
+    return;
+  }
+  spotlightKidEl.innerHTML = '';
+  if (!stats || stats.leaderboard.length === 0) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Add a kid to highlight nightly victories.';
+    spotlightKidEl.appendChild(empty);
+    return;
+  }
+  const entry = getSpotlightEntry(stats);
+  if (!entry) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Add a kid to highlight nightly victories.';
+    spotlightKidEl.appendChild(empty);
+    return;
+  }
+  const heading = document.createElement('h4');
+  heading.textContent = `${entry.badge.emoji} ${entry.name}`;
+  const summary = document.createElement('p');
+  const typeNoun = entry.uniqueTypes === 1 ? 'candy type' : 'candy types';
+  if (entry.age) {
+    summary.textContent = `${entry.age} yrs · ${entry.uniqueTypes} ${typeNoun}`;
+  } else {
+    summary.textContent = `${entry.uniqueTypes} ${typeNoun}`;
+  }
+  const meter = document.createElement('div');
+  meter.className = 'spotlight-meter';
+  const fill = document.createElement('span');
+  const maxPieces = stats.maxPieces > 0 ? (entry.pieces / stats.maxPieces) * 100 : 0;
+  const width = maxPieces > 0 && maxPieces < 12 ? 12 : maxPieces;
+  fill.style.width = `${Math.min(100, width)}%`;
+  fill.style.opacity = maxPieces > 0 ? '1' : '0.2';
+  meter.title = `${entry.pieces} pieces logged`;
+  meter.appendChild(fill);
+  const progress = document.createElement('p');
+  progress.className = 'spotlight-progress-label';
+  progress.textContent = `${entry.pieces} pieces logged this season`;
+  const statsList = document.createElement('ul');
+  statsList.className = 'spotlight-stats';
+  const addStat = (label, value) => {
+    const item = document.createElement('li');
+    const left = document.createElement('span');
+    left.textContent = label;
+    const right = document.createElement('span');
+    right.textContent = value;
+    item.append(left, right);
+    statsList.appendChild(item);
+  };
+  addStat('Favorite treat', entry.favoriteCandy ?? 'Tasting in progress');
+  const topRatingText = entry.topRatedCandy
+    ? `${entry.topRatedCandy.rating}★ ${entry.topRatedCandy.name}`
+    : 'No ratings yet';
+  addStat('Top rating', topRatingText);
+  const lastWhen = entry.lastCandy?.when && entry.lastCandy.when !== '—' ? entry.lastCandy.when : null;
+  const lastCandyText = entry.lastCandy
+    ? `${entry.lastCandy.name}${lastWhen ? ` · ${lastWhen}` : ''}`
+    : 'Log a candy to start';
+  addStat('Latest log', lastCandyText);
+  addStat('Badge', `${entry.badge.emoji} ${entry.badge.label}`);
+  spotlightKidEl.append(heading, summary, meter, progress, statsList);
+}
+
+function rotateSpotlightKid() {
+  if (!state.familyStats) {
+    return;
+  }
+  const entry = getSpotlightEntry(state.familyStats, true);
+  if (entry) {
+    renderSpotlight(state.familyStats);
+  }
+}
+
 function renderFamilyHub() {
   if (!state.user) {
     hideElement(familyHubSection);
@@ -561,11 +982,22 @@ function renderFamilyHub() {
     promptItem.textContent = 'Add a kid to unlock personalized learning prompts.';
     learningPromptsEl.appendChild(promptItem);
     renderMoodboard([]);
+    renderStarMeter([], 0);
+    renderTimeline([], 0);
+    renderClassroom([]);
+    renderFamilyGoals([]);
+    renderSpotlight(stats);
+    if (cycleSpotlightBtn) {
+      cycleSpotlightBtn.classList.add('hidden');
+      cycleSpotlightBtn.disabled = true;
+    }
     familyQuestEl.textContent = 'Add a kid to conjure a family quest.';
     state.currentQuest = null;
+    state.spotlightKidId = null;
     return;
   }
-  familySummaryEl.textContent = `Tracking ${stats.kidCount} candy ${kidWord} with ${stats.totalPieces} pieces logged.`;
+  const typeNoun = stats.uniqueTypeCount === 1 ? 'unique candy type' : 'unique candy types';
+  familySummaryEl.textContent = `Tracking ${stats.kidCount} candy ${kidWord} with ${stats.totalPieces} pieces across ${stats.uniqueTypeCount}/${FREE_CANDY_LIMIT} ${typeNoun}.`;
   priceEstimateEl.textContent = `Stripe family pass preview: $${(stats.kidCount * 2).toFixed(2)} for your crew.`;
 
   kidLeaderboardEl.innerHTML = '';
@@ -605,6 +1037,16 @@ function renderFamilyHub() {
   });
   learningPromptsEl.appendChild(promptFrag);
 
+  renderSpotlight(stats);
+  renderStarMeter(stats.ratingBands, stats.totalEntries);
+  renderTimeline(stats.timeline, stats.timelineMaxTotal);
+  renderClassroom(buildClassroomLessons(stats));
+  renderFamilyGoals(buildFamilyGoals(stats));
+  if (cycleSpotlightBtn) {
+    const hasRotation = stats.leaderboard.length > 1;
+    cycleSpotlightBtn.classList.toggle('hidden', !hasRotation);
+    cycleSpotlightBtn.disabled = !hasRotation;
+  }
   renderMoodboard(stats.moodboard);
   ensureQuest(stats, false);
 }
@@ -621,7 +1063,7 @@ function updateCandyLimitUI() {
     }
     return;
   }
-  const totalEntries = countTotalCandyEntries();
+  const totalEntries = countUniqueCandyTypes();
   const active = isSubscriptionActive(state.profile);
   let message = '';
   if (active) {
@@ -635,12 +1077,12 @@ function updateCandyLimitUI() {
   } else {
     const remaining = Math.max(0, FREE_CANDY_LIMIT - totalEntries);
     if (remaining <= 0) {
-      message = `Free plan limit reached (${FREE_CANDY_LIMIT} candy types). Activate your Stripe family pass to keep adding treats.`;
+      message = `Free plan limit reached (${FREE_CANDY_LIMIT} unique candy types). Activate your Stripe family pass to keep adding treats.`;
       addCandyBtn.disabled = true;
-      addCandyBtn.title = 'Activate your family pass to add more candy types.';
+      addCandyBtn.title = 'Activate your family pass to add more unique candy types.';
     } else {
       const noun = remaining === 1 ? 'type' : 'types';
-      message = `Free plan: ${remaining} candy ${noun} left before the Stripe paywall unlocks unlimited logging.`;
+      message = `Free plan: ${remaining} unique candy ${noun} left before the Stripe paywall unlocks unlimited logging.`;
       addCandyBtn.disabled = false;
       addCandyBtn.title = '';
     }
@@ -653,10 +1095,41 @@ function updateCandyLimitUI() {
   }
 }
 
+function setActivePanel(panelName) {
+  const target = panelRegistry[panelName] ? panelName : 'family';
+  state.activePanel = target;
+  panelButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.panelTarget === target);
+  });
+  Object.entries(panelRegistry).forEach(([key, section]) => {
+    if (!section) return;
+    if (key === target) {
+      showElement(section);
+    } else {
+      hideElement(section);
+    }
+  });
+  if (target === 'insights') {
+    const active = isSubscriptionActive(state.profile);
+    if (active) {
+      hideElement(paywallSection);
+      showElement(insightsSection);
+    } else {
+      showElement(paywallSection);
+      hideElement(insightsSection);
+    }
+  } else {
+    hideElement(paywallSection);
+  }
+}
+
 function toggleAuthUI(isSignedIn) {
   if (isSignedIn) {
     hideElement(signInButton);
     showElement(userBadge);
+    if (familyNav) {
+      showElement(familyNav);
+    }
   } else {
     showElement(signInButton);
     hideElement(userBadge);
@@ -665,6 +1138,11 @@ function toggleAuthUI(isSignedIn) {
     hideElement(candyManagerSection);
     hideElement(insightsSection);
     hideElement(paywallSection);
+    if (familyNav) {
+      hideElement(familyNav);
+    }
+    panelButtons.forEach((button) => button.classList.remove('active'));
+    state.activePanel = 'family';
   }
 }
 
@@ -688,17 +1166,14 @@ function updateSubscriptionUI() {
   const active = isSubscriptionActive(profile);
   if (active) {
     subscriptionStatusEl.textContent = 'Treat pass active';
-    hideElement(paywallSection);
-    showElement(insightsSection);
   } else {
     const expiryText = profile.subscriptionExpiry
       ? formatTimestamp(profile.subscriptionExpiry)
       : '—';
     subscriptionStatusEl.textContent = `Renew to unlock · expired ${expiryText}`;
-    showElement(paywallSection);
-    hideElement(insightsSection);
   }
   updateCandyLimitUI();
+  setActivePanel(state.activePanel);
 }
 
 function updateUserBadge(user) {
@@ -1282,6 +1757,18 @@ async function handleCandySubmit(event) {
     collectedYear: Number.isFinite(yearValue) ? yearValue : new Date().getFullYear(),
     updatedAt: serverTimestamp(),
   };
+  if (!isSubscriptionActive(state.profile)) {
+    const uniqueSet = collectUniqueCandyIdentifiers({ excludeCandyId: editingCandyId });
+    const identifier = getCandyIdentifier(payload);
+    const isNewType = identifier ? !uniqueSet.has(identifier) : false;
+    const projectedTotal = uniqueSet.size + (isNewType ? 1 : 0);
+    if (projectedTotal > FREE_CANDY_LIMIT) {
+      alert(
+        `You've reached the free limit of ${FREE_CANDY_LIMIT} unique candy types. Activate your Stripe family pass to keep logging new discoveries.`,
+      );
+      return;
+    }
+  }
   const candiesRef = collection(db, 'users', state.user.uid, 'kids', state.currentKidId, 'candies');
   if (editingCandyId) {
     const candyRef = doc(candiesRef, editingCandyId);
@@ -1344,6 +1831,7 @@ function cleanupSubscriptions() {
   state.kids.clear();
   state.familyStats = null;
   state.currentQuest = null;
+  state.spotlightKidId = null;
   if (familyQuestEl) {
     familyQuestEl.textContent = 'Sign in to conjure a family quest.';
   }
@@ -1364,13 +1852,8 @@ onAuthStateChanged(auth, async (user) => {
     state.profile = profile;
     zipDisplayEl.textContent = profile.zipCode;
     updateSubscriptionUI();
-    showElement(kidManagerSection);
-    showElement(candyManagerSection);
     renderFamilyHub();
     updateCandyLimitUI();
-    if (isSubscriptionActive(profile)) {
-      showElement(insightsSection);
-    }
     subscribeToCatalog(user.uid);
     subscribeToKids(user.uid);
     fetchZipInsights().catch((error) => console.error('Failed to fetch zip insights', error));
@@ -1437,6 +1920,18 @@ if (newQuestBtn) {
   newQuestBtn.addEventListener('click', () => {
     const stats = state.familyStats ?? computeFamilyStats();
     ensureQuest(stats, true);
+  });
+}
+
+panelButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    setActivePanel(button.dataset.panelTarget);
+  });
+});
+
+if (cycleSpotlightBtn) {
+  cycleSpotlightBtn.addEventListener('click', () => {
+    rotateSpotlightKid();
   });
 }
 
