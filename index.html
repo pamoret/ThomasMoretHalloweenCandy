@@ -35,6 +35,13 @@
       </div>
     </header>
 
+    <nav id="familyNav" class="family-nav hidden">
+      <button class="nav-pill active" data-panel-target="family">Family HQ</button>
+      <button class="nav-pill" data-panel-target="kids">Kid Crew</button>
+      <button class="nav-pill" data-panel-target="candy">Candy Vault</button>
+      <button class="nav-pill" data-panel-target="insights">Insights</button>
+    </nav>
+
     <main>
       <section class="hero">
         <div class="hero-content">
@@ -70,6 +77,11 @@
             <p id="priceEstimate" class="metric-sub">$0 family pass estimate</p>
             <div id="candyLimitNotice" class="limit-banner hidden"></div>
           </article>
+          <article class="card spotlight-card">
+            <h3>Kid Spotlight</h3>
+            <div id="spotlightKid" class="spotlight"></div>
+            <button id="cycleSpotlight" class="btn ghost small">Spin another spotlight</button>
+          </article>
           <article class="card">
             <h3>Kid Leaderboard</h3>
             <ul id="kidLeaderboard" class="leaderboard"></ul>
@@ -82,6 +94,18 @@
             <h3>Learning Prompts</h3>
             <ul id="learningPrompts" class="prompt-list"></ul>
           </article>
+          <article class="card star-card">
+            <h3>Star Meter</h3>
+            <div id="familyStarMeter" class="star-meter"></div>
+          </article>
+          <article class="card timeline-card">
+            <h3>Yearly Trail</h3>
+            <div id="familyTimeline" class="timeline-grid"></div>
+          </article>
+          <article class="card classroom-card">
+            <h3>Candy Classroom</h3>
+            <ul id="familyClassroom" class="classroom-list"></ul>
+          </article>
         </div>
         <div class="quest-card">
           <div>
@@ -89,6 +113,7 @@
             <p id="familyQuest">Sign in to conjure a family quest.</p>
           </div>
           <button id="newQuest" class="btn secondary">Spin new quest</button>
+          <ul id="familyGoals" class="goal-list"></ul>
         </div>
         <div class="moodboard" id="candyMoodboard"></div>
       </section>
