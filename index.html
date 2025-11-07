@@ -63,6 +63,18 @@
         </div>
       </section>
 
+      <section
+        id="previewSection"
+        class="preview-section"
+        aria-labelledby="previewSectionTitle"
+      >
+        <header class="preview-header">
+          <h2 id="previewSectionTitle">Feature previews</h2>
+          <p>Explore every panel and action before you dive into the dashboard.</p>
+        </header>
+        <div id="previewGallery" class="preview-gallery" role="list"></div>
+      </section>
+
       <nav id="familyNav" class="family-nav hidden" aria-label="Candy Cloud sections">
         <button class="nav-pill active" data-panel-target="family">Family HQ</button>
         <button class="nav-pill" data-panel-target="kids">Kid Crew</button>
@@ -228,8 +240,37 @@
             </table>
           </div>
           <div class="card card--map">
-            <h3>Candy Map</h3>
+            <div class="card-heading">
+              <h3>Candy Map</h3>
+              <p class="card-subtitle">Sketch your trick-or-treat routes and log candy by street.</p>
+            </div>
+            <div class="map-toolbar">
+              <button id="startStreetLog" class="btn secondary small">Draw street route</button>
+              <button id="cancelStreetLog" class="btn ghost small hidden">Cancel drawing</button>
+              <button id="finishStreetLog" class="btn primary small hidden" disabled>Log street haul</button>
+            </div>
+            <p id="streetDrawingStatus" class="map-status hidden"></p>
             <div id="map" role="application" aria-label="Map of candy collection locations"></div>
+            <div id="streetLogEmpty" class="map-empty">No street hauls logged yet.</div>
+            <ul id="streetLogList" class="street-log-list"></ul>
+          </div>
+          <div class="card card--map">
+            <div class="card-heading">
+              <h3>Generous Streets</h3>
+              <p class="card-subtitle">Average pieces per house from community street logs.</p>
+            </div>
+            <div id="streetMapWrapper" class="map-wrapper">
+              <div
+                id="streetMap"
+                role="application"
+                aria-label="Global map of generous trick-or-treat streets"
+              ></div>
+              <div id="streetMapPaywall" class="map-overlay hidden">
+                <p>Subscribe to unlock the global generosity map and street rankings.</p>
+                <button type="button" id="streetMapActivate" class="btn primary small">Activate subscription</button>
+              </div>
+            </div>
+            <ul id="streetLeaderboard" class="street-leaderboard"></ul>
           </div>
         </div>
       </section>
@@ -298,6 +339,31 @@
         <div class="modal-actions">
           <button type="button" class="btn ghost" data-close>Cancel</button>
           <button type="submit" class="btn primary">Save candy</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="streetDialog" class="modal">
+      <form id="streetForm">
+        <h3>Log street haul</h3>
+        <p id="streetDrawingSummary" class="modal-subtext"></p>
+        <p id="streetFormError" class="form-error hidden" role="alert"></p>
+        <label class="input-field">
+          <span>Street name</span>
+          <input type="text" id="streetName" placeholder="e.g., Maple Avenue" required />
+        </label>
+        <label class="input-field">
+          <span>Houses visited</span>
+          <input type="number" id="streetHouses" min="1" required />
+        </label>
+        <div class="input-field">
+          <span>Candy haul by type</span>
+          <div id="streetCandyList" class="street-candy-list"></div>
+          <button type="button" id="addStreetCandy" class="btn ghost small">+ Add candy type</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Save street log</button>
         </div>
       </form>
     </dialog>

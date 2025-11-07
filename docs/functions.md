@@ -29,6 +29,7 @@ The site logic lives in `assets/main.js`. Functions are organized by responsibil
 | `updateMoodboard()` | Creates the color swatch grid derived from candy colors. |
 | `updateKidCards()` | Renders the cards used in the kid management panel. |
 | `updateCandyTable()` | Populates the candy vault table for the selected kid. |
+| `renderPreviewGallery()` / `buildPreviewItems()` | Generate the feature preview cards and supporting metrics for every panel/action. |
 | `updateTotalTreats()` / `updateZipInsights()` | Refresh high-level stats for the insights panel. |
 
 ## Interactions and dialogs

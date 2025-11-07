@@ -5,6 +5,7 @@ Spooky Candy Cloud is a single-page experience for families to document Hallowee
 ## Key sections
 
 - **Hero** – Introduces the concept and provides quick actions to update the family home base or jump to the dashboard.
+- **Feature previews** – Gives a card-based tour of every panel and action so stakeholders can explore capabilities without signing in.
 - **Family HQ** – Summarizes family-wide metrics, tracks achievements, shows a candy color moodboard, and surfaces a nightly quest.
 - **Kid Crew** – Lists all registered kids with their favorite costume, age, and collection summary. Cards link to the edit workflow.
 - **Candy Vault** – Focuses on candy data entry and review. Each kid’s candy log can be edited with tasting notes and star ratings.
