@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spooky Candy Cloud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.5/dist/chart.umd.min.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="logo-group">
+        <img src="assets/logo.svg" alt="Candy Cloud" class="logo" />
+        <div>
+          <h1>Spooky Candy Cloud</h1>
+          <p class="tagline">Track, rate, and celebrate every sweet haul!</p>
+        </div>
+      </div>
+      <div class="auth-controls">
+        <button id="googleSignIn" class="btn primary">Sign in with Google</button>
+        <div id="userBadge" class="user-badge hidden">
+          <img id="userAvatar" class="avatar" alt="User avatar" />
+          <div>
+            <p id="userName" class="user-name"></p>
+            <p id="subscriptionStatus" class="subscription-chip"></p>
+          </div>
+          <button id="signOut" class="btn ghost">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <nav id="familyNav" class="family-nav hidden">
+      <button class="nav-pill active" data-panel-target="family">Family HQ</button>
+      <button class="nav-pill" data-panel-target="kids">Kid Crew</button>
+      <button class="nav-pill" data-panel-target="candy">Candy Vault</button>
+      <button class="nav-pill" data-panel-target="insights">Insights</button>
+    </nav>
+
+    <main>
+      <section class="hero">
+        <div class="hero-content">
+          <h2>Haunt your history in the sweetest way possible</h2>
+          <p>
+            Build dazzling candy dashboards for each kiddo, capture tasting notes, and
+            discover which treats rule every neighborhood.
+          </p>
+          <ul class="feature-list">
+            <li>👻 Google sign-in keeps things spooky-simple</li>
+            <li>🍬 Add kids, candies, ratings, and tasting notes</li>
+            <li>📍 Zip code insights uncover local legends</li>
+            <li>💫 Annual subscription unlocks returning magic</li>
+          </ul>
+        </div>
+        <div class="hero-art">
+          <img src="assets/hero-monsters.svg" alt="Candy monsters" />
+        </div>
+      </section>
+
+      <section id="familyHub" class="panel hidden">
+        <header class="panel-header">
+          <h2>Family Candy HQ</h2>
+          <p class="panel-subtitle">
+            Build a candy universe for every kiddo in your crew. Plan for just
+            <strong>$2 per child</strong> when you upgrade your family pass with Stripe.
+          </p>
+        </header>
+        <div class="family-grid">
+          <article class="card family-summary">
+            <h3>Sweet Snapshot</h3>
+            <p id="familySummary" class="metric">Add your first kid to begin.</p>
+            <p id="priceEstimate" class="metric-sub">$0 family pass estimate</p>
+            <div id="candyLimitNotice" class="limit-banner hidden"></div>
+          </article>
+          <article class="card spotlight-card">
+            <h3>Kid Spotlight</h3>
+            <div id="spotlightKid" class="spotlight"></div>
+            <button id="cycleSpotlight" class="btn ghost small">Spin another spotlight</button>
+          </article>
+          <article class="card">
+            <h3>Kid Leaderboard</h3>
+            <ul id="kidLeaderboard" class="leaderboard"></ul>
+          </article>
+          <article class="card">
+            <h3>Achievement Cauldron</h3>
+            <ul id="achievementBoard" class="badge-list"></ul>
+          </article>
+          <article class="card learning-card">
+            <h3>Learning Prompts</h3>
+            <ul id="learningPrompts" class="prompt-list"></ul>
+          </article>
+          <article class="card star-card">
+            <h3>Star Meter</h3>
+            <div id="familyStarMeter" class="star-meter"></div>
+          </article>
+          <article class="card timeline-card">
+            <h3>Yearly Trail</h3>
+            <div id="familyTimeline" class="timeline-grid"></div>
+          </article>
+          <article class="card classroom-card">
+            <h3>Candy Classroom</h3>
+            <ul id="familyClassroom" class="classroom-list"></ul>
+          </article>
+        </div>
+        <div class="quest-card">
+          <div>
+            <h3>Tonight's Candy Quest</h3>
+            <p id="familyQuest">Sign in to conjure a family quest.</p>
+          </div>
+          <button id="newQuest" class="btn secondary">Spin new quest</button>
+          <ul id="familyGoals" class="goal-list"></ul>
+        </div>
+        <div class="moodboard" id="candyMoodboard"></div>
+      </section>
+
+      <section id="paywall" class="paywall hidden">
+        <div class="paywall-card">
+          <h3>Yearly Treat Pass</h3>
+          <p>
+            Keep your candy chronicles glowing every year. Renew your spooky pass for
+            <strong>$3/year</strong> to unlock charts, sharing, and historical goodies.
+          </p>
+          <button id="activateSubscription" class="btn primary">
+            Activate my pass
+          </button>
+          <p class="paywall-note">
+            You'll be prompted to complete payment through your preferred provider. Once
+            confirmed, your access is restored instantly.
+          </p>
+        </div>
+      </section>
+
+      <section id="kidManager" class="panel hidden">
+        <header class="panel-header">
+          <h2>Kid Crew</h2>
+          <button id="addKid" class="btn secondary">+ Add Kid</button>
+        </header>
+        <p class="panel-subtitle">
+          Create a profile for each candy collector so you can track their unique tastes.
+        </p>
+        <div id="kidList" class="grid"></div>
+      </section>
+
+      <section id="candyManager" class="panel hidden">
+        <header class="panel-header">
+          <h2>Cauldron of Candy</h2>
+          <div class="kid-selector">
+            <label for="kidSelect">Viewing candy for</label>
+            <select id="kidSelect"></select>
+            <button id="addCandy" class="btn secondary">+ Add Candy</button>
+          </div>
+        </header>
+        <div id="candyFilters" class="filter-bar hidden">
+          <label>
+            <span>Star rating</span>
+            <select id="ratingFilter">
+              <option value="all">All</option>
+              <option value="5">⭐️⭐️⭐️⭐️⭐️</option>
+              <option value="4">⭐️⭐️⭐️⭐️</option>
+              <option value="3">⭐️⭐️⭐️</option>
+              <option value="2">⭐️⭐️</option>
+              <option value="1">⭐️</option>
+              <option value="0">Unrated</option>
+            </select>
+          </label>
+          <label>
+            <span>Year</span>
+            <select id="yearFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <label>
+            <span>Candy type</span>
+            <select id="typeFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <label class="search-field">
+            <span>Search notes</span>
+            <input id="searchFilter" type="search" placeholder="Chocolate, peanut, …" />
+          </label>
+          <button id="clearFilters" class="btn ghost">Reset</button>
+        </div>
+        <p id="candyFilterSummary" class="filter-summary hidden"></p>
+        <div id="candyEmptyState" class="empty-state hidden">
+          <p>Select a kid to start logging their treats.</p>
+        </div>
+        <div id="candyTableWrapper" class="table-wrapper hidden">
+          <table class="candy-table">
+            <thead>
+              <tr>
+                <th>Candy</th>
+                <th>Count</th>
+                <th>Year</th>
+                <th>Rating</th>
+                <th>Notes</th>
+                <th>Updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="candyTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="insights" class="panel hidden">
+        <header class="panel-header">
+          <h2>Neighborhood Insights</h2>
+          <div class="insight-meta">
+            <p>
+              Zip code <span id="zipDisplay" class="highlight"></span> loves
+              <span id="topZipCandy" class="highlight"></span>
+            </p>
+            <button id="refreshInsights" class="btn ghost">Refresh insights</button>
+          </div>
+        </header>
+        <div class="insights-grid">
+          <div class="card">
+            <h3>Total Treats</h3>
+            <p id="totalTreats" class="metric">0</p>
+            <p id="kidTreatBreakdown" class="metric-sub">—</p>
+          </div>
+          <div class="card">
+            <h3>Star Favorites</h3>
+            <canvas id="favoriteChart"></canvas>
+          </div>
+          <div class="card">
+            <h3>Colorful Cauldron</h3>
+            <canvas id="colorChart"></canvas>
+          </div>
+          <div class="card">
+            <h3>Popular by Zip</h3>
+            <table class="mini-table">
+              <thead>
+                <tr>
+                  <th>Candy</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody id="zipBreakdown"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Made with spooky joy for sweet-toothed families everywhere.</p>
+    </footer>
+
+    <dialog id="zipDialog" class="modal">
+      <form method="dialog">
+        <h3>Welcome to Spooky Candy Cloud!</h3>
+        <p>We use your zip code to share local candy trends. Where do you haunt?</p>
+        <label class="input-field">
+          <span>Zip code</span>
+          <input
+            type="text"
+            id="zipInput"
+            maxlength="10"
+            placeholder="e.g., 94105"
+            required
+          />
+        </label>
+        <div class="modal-actions">
+          <button value="cancel" class="btn ghost">Cancel</button>
+          <button id="zipSubmit" value="default" class="btn primary">Save &amp; begin</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="kidDialog" class="modal">
+      <form id="kidForm">
+        <h3 id="kidFormTitle">Add kid</h3>
+        <label class="input-field">
+          <span>Name</span>
+          <input type="text" id="kidName" required />
+        </label>
+        <label class="input-field">
+          <span>Favorite costume</span>
+          <input type="text" id="kidCostume" placeholder="Vampire, Witch, …" />
+        </label>
+        <label class="input-field">
+          <span>Birth year</span>
+          <input type="number" id="kidBirthYear" min="2000" max="2100" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Save kid</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="candyDialog" class="modal">
+      <form id="candyForm">
+        <h3 id="candyFormTitle">Add candy</h3>
+        <label class="input-field">
+          <span>Candy type</span>
+          <select id="candyType" required></select>
+        </label>
+        <label class="input-field">
+          <span>Pieces collected</span>
+          <input type="number" id="candyCount" min="0" required />
+        </label>
+        <label class="input-field">
+          <span>Year</span>
+          <input type="number" id="candyYear" min="1990" max="2100" />
+        </label>
+        <label class="input-field">
+          <span>Star rating</span>
+          <div id="ratingSelector" class="rating-selector"></div>
+        </label>
+        <label class="input-field">
+          <span>Tasting notes</span>
+          <textarea id="candyNotes" rows="3" placeholder="Sweet, crunchy, perfect!"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Save candy</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="kidCardTemplate">
+      <article class="kid-card">
+        <header>
+          <h3 class="kid-name"></h3>
+          <button class="btn ghost edit-kid">Edit</button>
+        </header>
+        <p class="kid-costume"></p>
+        <p class="kid-age"></p>
+        <footer>
+          <p class="kid-summary"></p>
+        </footer>
+      </article>
+    </template>
+
+    <template id="candyRowTemplate">
+      <tr>
+        <td class="candy-type"></td>
+        <td class="candy-count"></td>
+        <td class="candy-year"></td>
+        <td class="candy-rating"></td>
+        <td class="candy-notes"></td>
+        <td class="candy-updated"></td>
+        <td class="candy-actions">
+          <button class="btn ghost edit-candy">Edit</button>
+        </td>
+      </tr>
+    </template>
+
+    <script type="module" src="assets/app.js"></script>
+  </body>
+</html>

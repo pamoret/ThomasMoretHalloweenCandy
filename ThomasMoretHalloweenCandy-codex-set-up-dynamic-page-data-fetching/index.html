@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Halloween Candy Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Creepster&family=Raleway:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+      integrity="sha512-xwE/Az9zrjBIphAcBb3Fh2zl1Aw1XGk1lQmXpJ6LGs7gPnpHBW6V6w0XwxE5s0uP4iRrMqLJkB1zYq5u+M8Jig=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__overlay"></div>
+      <div class="hero__content">
+        <h1>Halloween Candy Tracker</h1>
+        <p>
+          A spellbinding dashboard that celebrates Thomas' candy haul and lays the
+          groundwork for a future family candy sharing experience.
+        </p>
+        <div class="hero__actions">
+          <button id="scrollToDashboard" class="btn btn--primary">
+            Explore the Candy Cauldron
+          </button>
+          <button id="downloadData" class="btn btn--ghost">Download Data</button>
+        </div>
+      </div>
+      <div class="hero__pumpkin" aria-hidden="true">🎃</div>
+    </header>
+
+    <main id="dashboard">
+      <section class="controls">
+        <div class="control-card">
+          <label for="yearFilter">Select Year</label>
+          <select id="yearFilter" aria-label="Filter results by year"></select>
+        </div>
+        <div class="control-card control-card--stats">
+          <h2 class="control-card__title">Candy Highlights</h2>
+          <p class="control-card__stat">
+            <span id="totalPieces">0</span>
+            <small>Total pieces in view</small>
+          </p>
+          <p class="control-card__stat control-card__stat--secondary">
+            Unique Treats: <span id="uniqueCandyCount">0</span>
+          </p>
+        </div>
+        <div class="control-card control-card--stats">
+          <h2 class="control-card__title">Favorite Candy</h2>
+          <p class="control-card__stat">
+            <span id="favoritePercentage">0%</span>
+            <small>of the haul ranked as favorites (rating ≥ 4)</small>
+          </p>
+          <p class="control-card__stat control-card__stat--secondary">
+            Top Pick: <span id="topCandy">Loading...</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card" aria-labelledby="totalCandyTitle">
+          <div class="card__header">
+            <h2 id="totalCandyTitle">Total Candy Over Time</h2>
+            <p class="card__subtitle">Track how the candy cauldron fills each year</p>
+          </div>
+          <canvas id="totalCandyChart" aria-describedby="totalCandyTitle"></canvas>
+        </article>
+
+        <article class="card" aria-labelledby="candyTypeTitle">
+          <div class="card__header">
+            <h2 id="candyTypeTitle">Candy By Type</h2>
+            <p class="card__subtitle">See which treats were a big hit this year</p>
+          </div>
+          <canvas id="candyTypeChart" aria-describedby="candyTypeTitle"></canvas>
+        </article>
+
+        <article class="card card--tall" aria-labelledby="colorTitle">
+          <div class="card__header">
+            <h2 id="colorTitle">Colorful Candy Mix</h2>
+            <p class="card__subtitle">A rainbow of sugary delights</p>
+          </div>
+          <canvas id="colorChart" aria-describedby="colorTitle"></canvas>
+        </article>
+
+        <article class="card card--map" aria-labelledby="mapTitle">
+          <div class="card__header">
+            <h2 id="mapTitle">Candy Map</h2>
+            <p class="card__subtitle">Discover where in the world the treats were gathered</p>
+          </div>
+          <div id="map" role="application" aria-label="Map of candy collection locations"></div>
+        </article>
+      </section>
+
+      <section class="future-vision" aria-labelledby="futureTitle">
+        <h2 id="futureTitle">Coming Soon: A Shared Candy Experience</h2>
+        <div class="future-vision__content">
+          <p>
+            This proof-of-concept is just the first bite! The next steps include secure
+            family accounts, creating kid profiles, adding candy collections by year, and a
+            shareable gallery to show off Halloween adventures worldwide.
+          </p>
+          <ul>
+            <li>Family sign-up and kid management</li>
+            <li>Track candy collections year-after-year</li>
+            <li>Collaborative maps to display global trick-or-treating</li>
+            <li>Exportable memories with photos and spooky stories</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Made with 🎃 and 🍬 for Thomas and future candy collectors everywhere.</p>
+    </footer>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"
+      integrity="sha512-9jqbp1NaK7BxFclwZDrcl1jLkCEi9NNWUsWtncaDo1Cq45Dg2vZPTk2ePwmfSDY2NwCJ4aAAVDXt2Dw8AXW3Cg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
+      integrity="sha512-V6w74E/X3Y02OSzUHFf2M9gEFUOLuO/7dBDEuDfSUdifYEYVplpXCMVbJAnYXhYzuq/n6BJEa3TBUnIFVQG5tw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="assets/script.js" defer></script>
+  </body>
+</html>
