@@ -35,6 +35,13 @@
       </div>
     </header>
 
+    <nav id="familyNav" class="family-nav hidden">
+      <button class="nav-pill active" data-panel-target="family">Family HQ</button>
+      <button class="nav-pill" data-panel-target="kids">Kid Crew</button>
+      <button class="nav-pill" data-panel-target="candy">Candy Vault</button>
+      <button class="nav-pill" data-panel-target="insights">Insights</button>
+    </nav>
+
     <main>
       <section class="hero">
         <div class="hero-content">
@@ -55,6 +62,62 @@
         </div>
       </section>
 
+      <section id="familyHub" class="panel hidden">
+        <header class="panel-header">
+          <h2>Family Candy HQ</h2>
+          <p class="panel-subtitle">
+            Build a candy universe for every kiddo in your crew. Plan for just
+            <strong>$2 per child</strong> when you upgrade your family pass with Stripe.
+          </p>
+        </header>
+        <div class="family-grid">
+          <article class="card family-summary">
+            <h3>Sweet Snapshot</h3>
+            <p id="familySummary" class="metric">Add your first kid to begin.</p>
+            <p id="priceEstimate" class="metric-sub">$0 family pass estimate</p>
+            <div id="candyLimitNotice" class="limit-banner hidden"></div>
+          </article>
+          <article class="card spotlight-card">
+            <h3>Kid Spotlight</h3>
+            <div id="spotlightKid" class="spotlight"></div>
+            <button id="cycleSpotlight" class="btn ghost small">Spin another spotlight</button>
+          </article>
+          <article class="card">
+            <h3>Kid Leaderboard</h3>
+            <ul id="kidLeaderboard" class="leaderboard"></ul>
+          </article>
+          <article class="card">
+            <h3>Achievement Cauldron</h3>
+            <ul id="achievementBoard" class="badge-list"></ul>
+          </article>
+          <article class="card learning-card">
+            <h3>Learning Prompts</h3>
+            <ul id="learningPrompts" class="prompt-list"></ul>
+          </article>
+          <article class="card star-card">
+            <h3>Star Meter</h3>
+            <div id="familyStarMeter" class="star-meter"></div>
+          </article>
+          <article class="card timeline-card">
+            <h3>Yearly Trail</h3>
+            <div id="familyTimeline" class="timeline-grid"></div>
+          </article>
+          <article class="card classroom-card">
+            <h3>Candy Classroom</h3>
+            <ul id="familyClassroom" class="classroom-list"></ul>
+          </article>
+        </div>
+        <div class="quest-card">
+          <div>
+            <h3>Tonight's Candy Quest</h3>
+            <p id="familyQuest">Sign in to conjure a family quest.</p>
+          </div>
+          <button id="newQuest" class="btn secondary">Spin new quest</button>
+          <ul id="familyGoals" class="goal-list"></ul>
+        </div>
+        <div class="moodboard" id="candyMoodboard"></div>
+      </section>
+
       <section id="paywall" class="paywall hidden">
         <div class="paywall-card">
           <h3>Yearly Treat Pass</h3>
@@ -70,6 +133,152 @@
             Checkout is handled securely with Stripe. Once confirmed, your access is
             restored instantly and you can keep unlocking $2 Kid Passes for your crew.
           </p>
+        </div>
+      </section>
+
+      <section id="familyHub" class="panel hidden">
+        <header class="panel-header">
+          <h2>Family Candy HQ</h2>
+          <p class="panel-subtitle">
+            Manage kid profiles, track allowances, and celebrate every sugary success.
+          </p>
+        </header>
+        <div class="family-hub-grid">
+          <aside class="family-sidebar">
+            <div class="sidebar-card">
+              <h3>Kiddo roster</h3>
+              <p class="sidebar-sub">First kid is free. Additional kid passes are $2 via Stripe.</p>
+              <ul id="familyRoster" class="roster-list"></ul>
+              <div class="limit-progress">
+                <p>
+                  Kid slots used: <span id="kidSlotsUsage" class="highlight">0</span>
+                </p>
+                <button id="openKidUpgrade" class="btn ghost small">Unlock kid slot</button>
+              </div>
+              <div id="kidLimitBanner" class="limit-banner hidden">
+                <p>
+                  You've used all free kid slots. Unlock more for <strong>$2 per child</strong>
+                  with a Stripe Kid Pass.
+                </p>
+              </div>
+            </div>
+            <div class="sidebar-card learning-note">
+              <h3>Parent Wins</h3>
+              <p>Celebrate effort! Leave kudos notes each time a kid tries a new candy.</p>
+              <button id="logParentWin" class="btn secondary small">Log a kudos moment</button>
+              <p id="parentWinCount" class="sidebar-metric">0 kudos logged</p>
+            </div>
+          </aside>
+          <div class="family-main">
+            <div class="family-metrics">
+              <article class="metric-card">
+                <h3>Kids on deck</h3>
+                <p id="familyKidCount" class="metric">0</p>
+                <p class="metric-sub">Each kid gets a candy storybook</p>
+              </article>
+              <article class="metric-card">
+                <h3>Unique candy types</h3>
+                <p id="familyUniqueCandy" class="metric">0</p>
+                <p class="metric-sub">Unlock more candy vault space with a pass</p>
+              </article>
+              <article class="metric-card">
+                <h3>Average star party</h3>
+                <p id="familyAverageRating" class="metric">—</p>
+                <p class="metric-sub">Across all logged tastings</p>
+              </article>
+              <article class="metric-card">
+                <h3>Sparkle score</h3>
+                <p id="familySparkleScore" class="metric">0</p>
+                <p class="metric-sub">Earn badges by logging more adventures</p>
+              </article>
+            </div>
+            <div class="family-highlight" id="familyKidHighlights"></div>
+            <div class="quest-board">
+              <div class="quest-header">
+                <h3>Quest board</h3>
+                <p>Encourage kids to explore, rate, and reflect on their candy discoveries.</p>
+              </div>
+              <div id="questList" class="quest-list"></div>
+            </div>
+            <div class="learning-lab">
+              <h3>Learning Lab</h3>
+              <p>Conversation starters that build math, storytelling, and gratitude muscles.</p>
+              <ul id="learningPrompts" class="prompt-list"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="familyHub" class="panel hidden">
+        <header class="panel-header">
+          <h2>Family Candy HQ</h2>
+          <p class="panel-subtitle">
+            Manage kid profiles, track allowances, and celebrate every sugary success.
+          </p>
+        </header>
+        <div class="family-hub-grid">
+          <aside class="family-sidebar">
+            <div class="sidebar-card">
+              <h3>Kiddo roster</h3>
+              <p class="sidebar-sub">First kid is free. Additional kid passes are $2 via Stripe.</p>
+              <ul id="familyRoster" class="roster-list"></ul>
+              <div class="limit-progress">
+                <p>
+                  Kid slots used: <span id="kidSlotsUsage" class="highlight">0</span>
+                </p>
+                <button id="openKidUpgrade" class="btn ghost small">Unlock kid slot</button>
+              </div>
+              <div id="kidLimitBanner" class="limit-banner hidden">
+                <p>
+                  You've used all free kid slots. Unlock more for <strong>$2 per child</strong>
+                  with a Stripe Kid Pass.
+                </p>
+              </div>
+            </div>
+            <div class="sidebar-card learning-note">
+              <h3>Parent Wins</h3>
+              <p>Celebrate effort! Leave kudos notes each time a kid tries a new candy.</p>
+              <button id="logParentWin" class="btn secondary small">Log a kudos moment</button>
+              <p id="parentWinCount" class="sidebar-metric">0 kudos logged</p>
+            </div>
+          </aside>
+          <div class="family-main">
+            <div class="family-metrics">
+              <article class="metric-card">
+                <h3>Kids on deck</h3>
+                <p id="familyKidCount" class="metric">0</p>
+                <p class="metric-sub">Each kid gets a candy storybook</p>
+              </article>
+              <article class="metric-card">
+                <h3>Unique candy types</h3>
+                <p id="familyUniqueCandy" class="metric">0</p>
+                <p class="metric-sub">Unlock more candy vault space with a pass</p>
+              </article>
+              <article class="metric-card">
+                <h3>Average star party</h3>
+                <p id="familyAverageRating" class="metric">—</p>
+                <p class="metric-sub">Across all logged tastings</p>
+              </article>
+              <article class="metric-card">
+                <h3>Sparkle score</h3>
+                <p id="familySparkleScore" class="metric">0</p>
+                <p class="metric-sub">Earn badges by logging more adventures</p>
+              </article>
+            </div>
+            <div class="family-highlight" id="familyKidHighlights"></div>
+            <div class="quest-board">
+              <div class="quest-header">
+                <h3>Quest board</h3>
+                <p>Encourage kids to explore, rate, and reflect on their candy discoveries.</p>
+              </div>
+              <div id="questList" class="quest-list"></div>
+            </div>
+            <div class="learning-lab">
+              <h3>Learning Lab</h3>
+              <p>Conversation starters that build math, storytelling, and gratitude muscles.</p>
+              <ul id="learningPrompts" class="prompt-list"></ul>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -203,6 +412,38 @@
           </p>
           <button id="openCandyUpgrade" class="btn primary small">Unlock Candy Vault</button>
         </div>
+        <div id="candyFilters" class="filter-bar hidden">
+          <label>
+            <span>Star rating</span>
+            <select id="ratingFilter">
+              <option value="all">All</option>
+              <option value="5">⭐️⭐️⭐️⭐️⭐️</option>
+              <option value="4">⭐️⭐️⭐️⭐️</option>
+              <option value="3">⭐️⭐️⭐️</option>
+              <option value="2">⭐️⭐️</option>
+              <option value="1">⭐️</option>
+              <option value="0">Unrated</option>
+            </select>
+          </label>
+          <label>
+            <span>Year</span>
+            <select id="yearFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <label>
+            <span>Candy type</span>
+            <select id="typeFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <label class="search-field">
+            <span>Search notes</span>
+            <input id="searchFilter" type="search" placeholder="Chocolate, peanut, …" />
+          </label>
+          <button id="clearFilters" class="btn ghost">Reset</button>
+        </div>
+        <p id="candyFilterSummary" class="filter-summary hidden"></p>
         <div id="candyEmptyState" class="empty-state hidden">
           <p>Select a kid to start logging their treats.</p>
         </div>
@@ -213,6 +454,7 @@
               <tr>
                 <th>Candy</th>
                 <th>Count</th>
+                <th>Year</th>
                 <th>Rating</th>
                 <th>Notes</th>
                 <th>Updated</th>
@@ -324,6 +566,10 @@
           <input type="number" id="candyCount" min="0" required />
         </label>
         <label class="input-field">
+          <span>Year</span>
+          <input type="number" id="candyYear" min="1990" max="2100" />
+        </label>
+        <label class="input-field">
           <span>Star rating</span>
           <div id="ratingSelector" class="rating-selector"></div>
         </label>
@@ -388,6 +634,7 @@
       <tr>
         <td class="candy-type"></td>
         <td class="candy-count"></td>
+        <td class="candy-year"></td>
         <td class="candy-rating"></td>
         <td class="candy-notes"></td>
         <td class="candy-updated"></td>
