@@ -1568,6 +1568,13 @@ function renderCandyTable() {
     showElement(candyEmptyState);
     hideElement(candyTableWrapper);
     candySummaryBadges.innerHTML = '';
+    return;
+  }
+  const kid = state.kids.get(state.currentKidId);
+  if (!kid || kid.candies.length === 0) {
+    showElement(candyEmptyState);
+    hideElement(candyTableWrapper);
+    candySummaryBadges.innerHTML = '';
     hideElement(candyFiltersBar);
     hideElement(candyFilterSummaryEl);
     return;
@@ -1853,6 +1860,262 @@ function renderFamilyRoster(snapshot) {
     fragment.appendChild(item);
   });
   familyRosterEl.appendChild(fragment);
+}
+
+function renderFamilyHighlights(snapshot) {
+  if (!familyKidHighlightsEl) return;
+  familyKidHighlightsEl.innerHTML = '';
+  const highlights = [];
+  const selectedKid = snapshot.roster.find((entry) => entry.kidId === state.currentKidId);
+  if (selectedKid) {
+    const fav = selectedKid.favoriteCandy;
+    highlights.push({
+      title: `${selectedKid.kidName}'s spotlight`,
+      text: `${selectedKid.pieces} treats · ${selectedKid.uniqueCandy} types explored`,
+      subtext: fav
+        ? `Favorite rating: ${fav.displayName ?? fav.type} (${renderRating(fav.rating)}).`
+        : 'Log ratings to reveal favorites!',
+    });
+  }
+  if (snapshot.topKidByPieces) {
+    highlights.push({
+      title: 'Candy Captain',
+      text: `${snapshot.topKidByPieces.kidName} collected ${snapshot.topKidByPieces.pieces} pieces!`,
+      subtext: 'Invite them to share strategy tips with siblings.',
+    });
+  }
+  if (snapshot.topKidByRating && snapshot.topKidByRating.averageRating > 0) {
+    highlights.push({
+      title: 'Flavor Critic',
+      text: `${snapshot.topKidByRating.kidName} averages ${formatAverage(snapshot.topKidByRating.averageRating)}⭐`,
+      subtext: 'Try comparing notes on what makes a five-star treat.',
+    });
+  }
+  if (snapshot.topCandyOverall) {
+    highlights.push({
+      title: 'Top Treat of the Night',
+      text: `${snapshot.topCandyOverall.name} (${formatAverage(snapshot.topCandyOverall.averageRating)}⭐)`,
+      subtext: `Total pieces logged: ${snapshot.topCandyOverall.total}`,
+    });
+  }
+  if (state.parentWins > 0) {
+    highlights.push({
+      title: 'Kudos Tracker',
+      text: `${state.parentWins} moments celebrated`,
+      subtext: 'Keep cheering brave trick-or-treating!',
+    });
+  }
+  if (highlights.length === 0) {
+    highlights.push({
+      title: 'Ready to explore',
+      text: 'Add candy logs to unlock family highlights.',
+    });
+  }
+  const fragment = document.createDocumentFragment();
+  highlights.slice(0, 4).forEach((item) => fragment.appendChild(createHighlightCard(item)));
+  familyKidHighlightsEl.appendChild(fragment);
+}
+
+function renderQuestBoard(snapshot) {
+  if (!questListEl) return;
+  questListEl.innerHTML = '';
+  const quests = [
+    {
+      title: 'Candy Critic',
+      description: 'Rate 10 candies with stars to earn your tasting badge.',
+      progress: snapshot.ratedCandyCount / 10,
+      label: `${snapshot.ratedCandyCount}/10 rated treats`,
+    },
+    {
+      title: 'Rainbow Hunter',
+      description: 'Collect 8 unique candy types across the neighborhood.',
+      progress: snapshot.uniqueCandyCount / 8,
+      label: `${snapshot.uniqueCandyCount} of 8 colors found`,
+    },
+    {
+      title: 'Storyteller Supreme',
+      description: 'Write 50 words of tasting notes across your family.',
+      progress: snapshot.notesWordCount / 50,
+      label: `${snapshot.notesWordCount} of 50 story words`,
+    },
+    {
+      title: 'High-Five Hive',
+      description: 'Log 5 kudos moments when kids show kindness or bravery.',
+      progress: state.parentWins / 5,
+      label: `${state.parentWins}/5 kudos shared`,
+    },
+  ];
+  const fragment = document.createDocumentFragment();
+  quests.forEach((quest) => {
+    const card = document.createElement('div');
+    card.className = 'quest-card';
+    const heading = document.createElement('h4');
+    heading.textContent = quest.title;
+    const description = document.createElement('p');
+    description.textContent = quest.description;
+    const progress = document.createElement('div');
+    progress.className = 'quest-progress';
+    const bar = document.createElement('span');
+    bar.style.width = `${Math.min(100, Math.round(Math.max(0, quest.progress) * 100))}%`;
+    progress.appendChild(bar);
+    const label = document.createElement('p');
+    label.className = 'roster-meta';
+    label.textContent = quest.label;
+    card.append(heading, description, progress, label);
+    fragment.appendChild(card);
+  });
+  questListEl.appendChild(fragment);
+}
+
+function renderLearningPrompts(snapshot) {
+  if (!learningPromptsEl) return;
+  learningPromptsEl.innerHTML = '';
+  const prompts = [];
+  if (snapshot.topKidByPieces) {
+    prompts.push(
+      `Ask ${snapshot.topKidByPieces.kidName} to sort their ${snapshot.topKidByPieces.pieces} treats by type and count them by tens.`,
+    );
+  }
+  if (snapshot.topKidByRating && snapshot.topKidByRating.averageRating > 0) {
+    prompts.push(
+      `Compare two top-rated candies. Why did ${snapshot.topKidByRating.kidName} give them ${formatAverage(snapshot.topKidByRating.averageRating)} stars?`,
+    );
+  }
+  if (snapshot.topCandyOverall) {
+    prompts.push(
+      `Describe the taste of ${snapshot.topCandyOverall.name} using all five senses. What made it a ${formatAverage(snapshot.topCandyOverall.averageRating)} star hit?`,
+    );
+  }
+  const selectedKid = snapshot.roster.find((entry) => entry.kidId === state.currentKidId);
+  if (selectedKid) {
+    prompts.push(
+      `Plan next year's costume together. How could ${selectedKid.kidName} trade candy to fund their dream outfit?`,
+    );
+  }
+  if (state.parentWins === 0) {
+    prompts.push('Start a gratitude chain: each kid shares one kind moment from trick-or-treating.');
+  }
+  if (prompts.length === 0) {
+    prompts.push('Log candy adventures to unlock custom conversation starters!');
+  }
+  const fragment = document.createDocumentFragment();
+  prompts.slice(0, 5).forEach((prompt) => {
+    const li = document.createElement('li');
+    li.textContent = prompt;
+    fragment.appendChild(li);
+  });
+  learningPromptsEl.appendChild(fragment);
+}
+
+function updateParentWinsDisplay() {
+  if (parentWinCountEl) {
+    parentWinCountEl.textContent = `${state.parentWins} kudos logged`;
+  }
+}
+
+function renderFamilyHub() {
+  if (!state.user) return;
+  const snapshot = computeFamilySnapshot();
+  familyKidCountEl.textContent = state.kids.size;
+  familyUniqueCandyEl.textContent = snapshot.uniqueCandyCount;
+  familyAverageRatingEl.textContent = formatAverage(snapshot.averageRating);
+  familySparkleScoreEl.textContent = snapshot.sparkleScore;
+  renderFamilyRoster(snapshot);
+  renderFamilyHighlights(snapshot);
+  renderQuestBoard(snapshot);
+  renderLearningPrompts(snapshot);
+  updateParentWinsDisplay();
+  updateCandyFilterOptions();
+}
+
+function updateLimitBanners() {
+  if (kidSlotsUsageEl) {
+    const allowed = getAllowedKidSlots();
+    const kidCount = state.kids.size;
+    if (Number.isFinite(allowed)) {
+      kidSlotsUsageEl.textContent = `${Math.min(kidCount, allowed)}/${allowed}`;
+    } else {
+      kidSlotsUsageEl.textContent = `${kidCount} · unlimited`;
+    }
+    if (Number.isFinite(allowed) && kidCount >= allowed) {
+      showElement(kidLimitBanner);
+    } else {
+      hideElement(kidLimitBanner);
+    }
+    if (canAddKid()) {
+      addKidBtn.textContent = '+ Add Kid';
+    } else {
+      addKidBtn.textContent = 'Unlock Kid Pass';
+    }
+  }
+  if (candyLimitBanner) {
+    const limit = getCandyTypeLimit();
+    const uniqueCount = countUniqueCandyTypes();
+    if (Number.isFinite(limit) && uniqueCount >= limit) {
+      if (candyLimitMessage) {
+        candyLimitMessage.textContent = `Candy vault full! (${uniqueCount}/${limit} types). Unlock unlimited candy types with our Stripe Candy Vault pass.`;
+      }
+      showElement(candyLimitBanner);
+      addCandyBtn.textContent = 'Unlock Candy Vault';
+    } else {
+      hideElement(candyLimitBanner);
+      addCandyBtn.textContent = '+ Add Candy';
+    }
+  }
+}
+
+function ensureCharts() {
+  if (typeof window.Chart === 'undefined') {
+    console.warn('Chart.js is not available');
+    return false;
+  }
+  const favoriteCanvas = document.getElementById('favoriteChart');
+  const colorCanvas = document.getElementById('colorChart');
+  if (!state.favoriteChart) {
+    state.favoriteChart = new window.Chart(favoriteCanvas, {
+      type: 'bar',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+  if (!state.colorChart) {
+    state.colorChart = new window.Chart(colorCanvas, {
+      type: 'doughnut',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+      },
+    });
+  }
+  return true;
+}
+
+function pickPalette(index) {
+  const palette = ['#FF6EC7', '#FF9A3C', '#4FB0AE', '#A55EEA', '#FFC857', '#F05454', '#7BD389'];
+  return palette[index % palette.length];
+}
+
+function renderInsights() {
+  if (!state.user) return;
+  const snapshot = computeFamilySnapshot();
+  const zipCode = state.profile.zipCode || '00000';
+  zipDisplayEl.textContent = zipCode;
+  topZipCandyEl.textContent = snapshot.topCandyOverall?.name ?? '—';
+  totalTreatsEl.textContent = snapshot.totalPieces;
+  if (snapshot.roster.length > 0) {
+    const breakdown = snapshot.roster
+      .map((entry) => `${entry.kidName}: ${entry.pieces} pcs`)
+      .join(' · ');
+    kidTreatBreakdownEl.textContent = breakdown;
+  } else {
+    kidTreatBreakdownEl.textContent = 'Add kids to unlock insights!';
+  }
+  zipBreakdownBody.innerHTML = '';
+  const fragment = document.createDocumentFragment();
 }
 
 function renderFamilyHighlights(snapshot) {
@@ -2496,6 +2759,49 @@ function clearCandyFilters() {
   yearFilterEl.value = 'all';
   typeFilterEl.value = 'all';
   candySearchInput.value = '';
+}
+
+function handleActivateSubscription() {
+  state.profile.subscriptionStatus = 'active';
+  state.profile.subscriptionExpiry = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+  state.profile.paidKidSlots = Math.max(state.profile.paidKidSlots, 1);
+  state.profile.candyVaultUnlocked = true;
+  persistState();
+  updateSubscriptionUI();
+  renderInsights();
+}
+
+function handleKidUpgradeConfirm() {
+  state.profile.paidKidSlots = Number(state.profile.paidKidSlots ?? 0) + 1;
+  persistState();
+  updateLimitBanners();
+  closeDialog(kidUpgradeDialog);
+}
+
+function handleCandyUpgradeConfirm() {
+  state.profile.candyVaultUnlocked = true;
+  persistState();
+  updateLimitBanners();
+  closeDialog(candyUpgradeDialog);
+}
+
+function handleParentWin() {
+  state.parentWins += 1;
+  persistState();
+  renderFamilyHub();
+}
+
+function clearCandyFilters() {
+  state.candyFilters = {
+    rating: 'all',
+    year: 'all',
+    type: 'all',
+    search: '',
+  };
+  ratingFilterEl.value = 'all';
+  yearFilterEl.value = 'all';
+  typeFilterEl.value = 'all';
+  candySearchInput.value = '';
 function cleanupSubscriptions() {
   if (state.unsubscribers.kids) {
     state.unsubscribers.kids();
@@ -2685,10 +2991,17 @@ if (cycleSpotlightBtn) {
   });
 }
 
-document.querySelectorAll('[data-close]').forEach((button) => {
-  const dialog = button.closest('dialog');
-  button.addEventListener('click', () => closeDialog(dialog));
-});
+function bootstrapFromStorage() {
+  const snapshot = loadStateFromStorage();
+  if (snapshot) {
+    restoreState(snapshot);
+    if (snapshot.user) {
+      state.user = snapshot.user;
+      toggleAuthUI(true);
+      updateUserBadge();
+    }
+  }
+}
 
 async function init() {
   await loadCandyCatalog();
