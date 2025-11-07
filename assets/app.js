@@ -377,6 +377,9 @@ function renderRatingButtons(value = 0) {
   }
 }
 
+function closeDialog(dialog) {
+  if (dialog?.open) {
+    dialog.close();
 function resetCandyForm() {
   candyForm.reset();
   selectedRating = 0;
@@ -1215,6 +1218,12 @@ function renderFamilyHub() {
   ensureQuest(stats, false);
 }
 
+function showElement(element) {
+  element?.classList.remove('hidden');
+}
+
+function hideElement(element) {
+  element?.classList.add('hidden');
 function updateCandyLimitUI() {
   if (!candyLimitNoticeEl) {
     return;
@@ -1575,6 +1584,13 @@ function renderCandyTable() {
     showElement(candyEmptyState);
     hideElement(candyTableWrapper);
     candySummaryBadges.innerHTML = '';
+    return;
+  }
+  const kid = state.kids.get(state.currentKidId);
+  if (!kid || kid.candies.length === 0) {
+    showElement(candyEmptyState);
+    hideElement(candyTableWrapper);
+    candySummaryBadges.innerHTML = '';
     hideElement(candyFiltersBar);
     hideElement(candyFilterSummaryEl);
     return;
@@ -1657,6 +1673,325 @@ function setSelectOptions(selectEl, options, placeholder) {
   selectEl.value = hasPrevious ? previous : 'all';
   const key = selectEl === yearFilterEl ? 'year' : 'type';
   state.candyFilters[key] = selectEl.value;
+}
+
+function updateCandyFilterOptions() {
+  const kid = state.kids.get(state.currentKidId);
+  const yearOptions = [];
+  const typeMap = new Map();
+  if (kid) {
+    const years = new Set();
+    kid.candies.forEach((candy) => {
+      const year = getCandyYear(candy);
+      if (year) years.add(String(year));
+      const key = candy.catalogId ?? `custom:${candy.displayName ?? candy.type ?? 'Candy'}`;
+      const label = candy.displayName ?? candy.type ?? 'Candy';
+      if (!typeMap.has(key)) {
+        typeMap.set(key, label);
+      }
+    });
+    Array.from(years)
+      .sort((a, b) => Number(b) - Number(a))
+      .forEach((year) => yearOptions.push({ value: year, label: year }));
+  }
+  const typeOptions = Array.from(typeMap.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  setSelectOptions(yearFilterEl, yearOptions, 'All years');
+  setSelectOptions(typeFilterEl, typeOptions, 'All candy');
+}
+
+function computeFamilySnapshot() {
+  const roster = [];
+  const uniqueCandy = new Map();
+  let totalPieces = 0;
+  let ratingSum = 0;
+  let ratingCount = 0;
+  let ratedCandyCount = 0;
+  let notesWordCount = 0;
+  const years = new Set();
+  state.kids.forEach((kid, kidId) => {
+    const kidName = kid.name ?? 'Mystery Kid';
+    let kidPieces = 0;
+    let kidRatingSum = 0;
+    let kidRatingCount = 0;
+    const kidUnique = new Set();
+    let favoriteCandy = null;
+    kid.candies.forEach((candy) => {
+      const count = Number(candy.count ?? 0);
+      kidPieces += count;
+      totalPieces += count;
+      const key = candy.catalogId ?? `custom:${candy.displayName ?? candy.type ?? 'Candy'}`;
+      kidUnique.add(key);
+      const rating = Number(candy.rating ?? 0);
+      if (rating > 0) {
+        kidRatingSum += rating;
+        kidRatingCount += 1;
+        ratingSum += rating;
+        ratingCount += 1;
+        ratedCandyCount += 1;
+      }
+      if (!favoriteCandy || rating > Number(favoriteCandy.rating ?? 0)) {
+        favoriteCandy = candy;
+      }
+      const displayName = candy.displayName ?? candy.type ?? 'Candy';
+      const entry = uniqueCandy.get(key) ?? { name: displayName, total: 0, ratingSum: 0, ratingCount: 0 };
+      entry.total += count;
+      if (rating > 0) {
+        entry.ratingSum += rating;
+        entry.ratingCount += 1;
+      }
+      uniqueCandy.set(key, entry);
+      if (candy.notes) {
+        notesWordCount += candy.notes.trim().split(/\s+/).filter(Boolean).length;
+      }
+      const year = getCandyYear(candy);
+      if (year) years.add(String(year));
+    });
+    const averageRating = kidRatingCount ? kidRatingSum / kidRatingCount : 0;
+    roster.push({
+      kidId,
+      kidName,
+      pieces: kidPieces,
+      averageRating,
+      uniqueCandy: kidUnique.size,
+      favoriteCandy,
+      notesLogged: kid.candies.length,
+      birthYear: kid.birthYear ?? null,
+    });
+  });
+  const uniqueCandyCount = uniqueCandy.size;
+  const topKidByPieces = roster.reduce(
+    (best, current) => (current.pieces > (best?.pieces ?? 0) ? current : best),
+    null,
+  );
+  const topKidByRating = roster.reduce(
+    (best, current) => (current.averageRating > (best?.averageRating ?? 0) ? current : best),
+    null,
+  );
+  const topCandyOverall = Array.from(uniqueCandy.values()).reduce((best, current) => {
+    const avg = current.ratingCount ? current.ratingSum / current.ratingCount : 0;
+    if (!best || avg > (best.averageRating ?? 0)) {
+      return { ...current, averageRating: avg };
+    }
+    return best;
+  }, null);
+  const sparkleScore = Math.round(
+    totalPieces + uniqueCandyCount * 4 + (ratingCount ? (ratingSum / ratingCount) * 15 : 0) + state.parentWins * 6,
+  );
+  const averageRating = ratingCount ? ratingSum / ratingCount : 0;
+  return {
+    roster,
+    uniqueCandyCount,
+    totalPieces,
+    averageRating,
+    sparkleScore,
+    ratedCandyCount,
+    notesWordCount,
+    topKidByPieces,
+    topKidByRating,
+    topCandyOverall,
+    years: Array.from(years).sort((a, b) => Number(b) - Number(a)),
+    uniqueCandyMap: uniqueCandy,
+  };
+}
+
+function createHighlightCard({ title, text, subtext }) {
+  const card = document.createElement('article');
+  card.className = 'highlight-card';
+  const heading = document.createElement('h4');
+  heading.textContent = title;
+  const primary = document.createElement('p');
+  primary.textContent = text;
+  card.append(heading, primary);
+  if (subtext) {
+    const detail = document.createElement('p');
+    detail.className = 'roster-meta';
+    detail.textContent = subtext;
+    card.appendChild(detail);
+  }
+  return card;
+}
+
+function renderFamilyRoster(snapshot) {
+  if (!familyRosterEl) return;
+  familyRosterEl.innerHTML = '';
+  if (snapshot.roster.length === 0) {
+    const emptyItem = document.createElement('li');
+    emptyItem.className = 'roster-item';
+    emptyItem.textContent = 'Add your first kid to start the candy adventure!';
+    familyRosterEl.appendChild(emptyItem);
+    return;
+  }
+  const sorted = [...snapshot.roster].sort((a, b) => a.kidName.localeCompare(b.kidName));
+  const fragment = document.createDocumentFragment();
+  sorted.forEach((entry) => {
+    const item = document.createElement('li');
+    item.className = 'roster-item';
+    if (entry.kidId === state.currentKidId) {
+      item.classList.add('active');
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    if (entry.kidId === state.currentKidId) {
+      button.setAttribute('aria-current', 'true');
+    }
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = entry.kidName;
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'roster-meta';
+    const ratingText = entry.averageRating > 0 ? `${formatAverage(entry.averageRating)}⭐` : 'No ratings yet';
+    metaSpan.textContent = `${entry.pieces} pcs · ${ratingText}`;
+    button.append(nameSpan, metaSpan);
+    button.addEventListener('click', () => {
+      state.currentKidId = entry.kidId;
+      renderKidSelect();
+      renderCandyTable();
+      renderFamilyHub();
+      renderInsights();
+    });
+    item.appendChild(button);
+    fragment.appendChild(item);
+  });
+  familyRosterEl.appendChild(fragment);
+}
+
+function renderFamilyHighlights(snapshot) {
+  if (!familyKidHighlightsEl) return;
+  familyKidHighlightsEl.innerHTML = '';
+  const highlights = [];
+  const selectedKid = snapshot.roster.find((entry) => entry.kidId === state.currentKidId);
+  if (selectedKid) {
+    const fav = selectedKid.favoriteCandy;
+    highlights.push({
+      title: `${selectedKid.kidName}'s spotlight`,
+      text: `${selectedKid.pieces} treats · ${selectedKid.uniqueCandy} types explored`,
+      subtext: fav
+        ? `Favorite rating: ${fav.displayName ?? fav.type} (${renderRating(fav.rating)}).`
+        : 'Log ratings to reveal favorites!',
+    });
+  }
+  if (snapshot.topKidByPieces) {
+    highlights.push({
+      title: 'Candy Captain',
+      text: `${snapshot.topKidByPieces.kidName} collected ${snapshot.topKidByPieces.pieces} pieces!`,
+      subtext: 'Invite them to share strategy tips with siblings.',
+    });
+  }
+  if (snapshot.topKidByRating && snapshot.topKidByRating.averageRating > 0) {
+    highlights.push({
+      title: 'Flavor Critic',
+      text: `${snapshot.topKidByRating.kidName} averages ${formatAverage(snapshot.topKidByRating.averageRating)}⭐`,
+      subtext: 'Try comparing notes on what makes a five-star treat.',
+    });
+  }
+  if (snapshot.topCandyOverall) {
+    highlights.push({
+      title: 'Top Treat of the Night',
+      text: `${snapshot.topCandyOverall.name} (${formatAverage(snapshot.topCandyOverall.averageRating)}⭐)`,
+      subtext: `Total pieces logged: ${snapshot.topCandyOverall.total}`,
+    });
+  }
+  if (state.parentWins > 0) {
+    highlights.push({
+      title: 'Kudos Tracker',
+      text: `${state.parentWins} moments celebrated`,
+      subtext: 'Keep cheering brave trick-or-treating!',
+    });
+  }
+  if (highlights.length === 0) {
+    highlights.push({
+      title: 'Ready to explore',
+      text: 'Add candy logs to unlock family highlights.',
+    });
+  }
+  const fragment = document.createDocumentFragment();
+  highlights.slice(0, 4).forEach((item) => fragment.appendChild(createHighlightCard(item)));
+  familyKidHighlightsEl.appendChild(fragment);
+}
+
+function renderQuestBoard(snapshot) {
+  if (!questListEl) return;
+  questListEl.innerHTML = '';
+  const quests = [
+    {
+      title: 'Candy Critic',
+      description: 'Rate 10 candies with stars to earn your tasting badge.',
+      progress: snapshot.ratedCandyCount / 10,
+      label: `${snapshot.ratedCandyCount}/10 rated treats`,
+    },
+    {
+      title: 'Rainbow Hunter',
+      description: 'Collect 8 unique candy types across the neighborhood.',
+      progress: snapshot.uniqueCandyCount / 8,
+      label: `${snapshot.uniqueCandyCount} of 8 colors found`,
+    },
+    {
+      title: 'Storyteller Supreme',
+      description: 'Write 50 words of tasting notes across your family.',
+      progress: snapshot.notesWordCount / 50,
+      label: `${snapshot.notesWordCount} of 50 story words`,
+    },
+    {
+      title: 'High-Five Hive',
+      description: 'Log 5 kudos moments when kids show kindness or bravery.',
+      progress: state.parentWins / 5,
+      label: `${state.parentWins}/5 kudos shared`,
+    },
+  ];
+  const fragment = document.createDocumentFragment();
+  quests.forEach((quest) => {
+    const card = document.createElement('div');
+    card.className = 'quest-card';
+    const heading = document.createElement('h4');
+    heading.textContent = quest.title;
+    const description = document.createElement('p');
+    description.textContent = quest.description;
+    const progress = document.createElement('div');
+    progress.className = 'quest-progress';
+    const bar = document.createElement('span');
+    bar.style.width = `${Math.min(100, Math.round(Math.max(0, quest.progress) * 100))}%`;
+    progress.appendChild(bar);
+    const label = document.createElement('p');
+    label.className = 'roster-meta';
+    label.textContent = quest.label;
+    card.append(heading, description, progress, label);
+    fragment.appendChild(card);
+  });
+  questListEl.appendChild(fragment);
+}
+
+function renderLearningPrompts(snapshot) {
+  if (!learningPromptsEl) return;
+  learningPromptsEl.innerHTML = '';
+  const prompts = [];
+  if (snapshot.topKidByPieces) {
+    prompts.push(
+      `Ask ${snapshot.topKidByPieces.kidName} to sort their ${snapshot.topKidByPieces.pieces} treats by type and count them by tens.`,
+    );
+  }
+  if (snapshot.topKidByRating && snapshot.topKidByRating.averageRating > 0) {
+    prompts.push(
+      `Compare two top-rated candies. Why did ${snapshot.topKidByRating.kidName} give them ${formatAverage(snapshot.topKidByRating.averageRating)} stars?`,
+    );
+  }
+  if (snapshot.topCandyOverall) {
+    prompts.push(
+      `Describe the taste of ${snapshot.topCandyOverall.name} using all five senses. What made it a ${formatAverage(snapshot.topCandyOverall.averageRating)} star hit?`,
+    );
+  }
+  const selectedKid = snapshot.roster.find((entry) => entry.kidId === state.currentKidId);
+  if (selectedKid) {
+    prompts.push(
+      `Plan next year's costume together. How could ${selectedKid.kidName} trade candy to fund their dream outfit?`,
+    );
+  }
+  if (state.parentWins === 0) {
+    prompts.push('Start a gratitude chain: each kid shares one kind moment from trick-or-treating.');
+  }
+  if (prompts.length === 0) {
+    prompts.push('Log candy adventures to unlock custom conversation starters!');
+  }
 }
 
 function updateCandyFilterOptions() {
@@ -2771,6 +3106,59 @@ function handleActivateSubscription() {
   renderInsights();
 }
 
+function handleSignOut() {
+  state.user = null;
+  persistState();
+  toggleAuthUI(false);
+}
+
+function updateUserBadge() {
+  if (!userNameEl || !userAvatarEl) return;
+  userNameEl.textContent = state.user?.displayName ?? 'Candy collector';
+  userAvatarEl.src = state.user?.photoURL ?? 'https://avatars.dicebear.com/api/bottts/candy.svg';
+}
+
+function handleActivateSubscription() {
+  state.profile.subscriptionStatus = 'active';
+  state.profile.subscriptionExpiry = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+  state.profile.paidKidSlots = Math.max(state.profile.paidKidSlots, 1);
+  state.profile.candyVaultUnlocked = true;
+  persistState();
+  updateSubscriptionUI();
+  renderInsights();
+}
+
+function handleKidUpgradeConfirm() {
+  state.profile.paidKidSlots = Number(state.profile.paidKidSlots ?? 0) + 1;
+  persistState();
+  updateLimitBanners();
+  closeDialog(kidUpgradeDialog);
+}
+
+function handleCandyUpgradeConfirm() {
+  state.profile.candyVaultUnlocked = true;
+  persistState();
+  updateLimitBanners();
+  closeDialog(candyUpgradeDialog);
+}
+
+function handleParentWin() {
+  state.parentWins += 1;
+  persistState();
+  renderFamilyHub();
+}
+
+function clearCandyFilters() {
+  state.candyFilters = {
+    rating: 'all',
+    year: 'all',
+    type: 'all',
+    search: '',
+  };
+  ratingFilterEl.value = 'all';
+  yearFilterEl.value = 'all';
+  typeFilterEl.value = 'all';
+  candySearchInput.value = '';
 function handleKidUpgradeConfirm() {
   state.profile.paidKidSlots = Number(state.profile.paidKidSlots ?? 0) + 1;
   persistState();
@@ -2921,6 +3309,19 @@ function setupGlobalListeners() {
     renderInsights();
   });
 }
+
+function bootstrapFromStorage() {
+  const snapshot = loadStateFromStorage();
+  if (snapshot) {
+    restoreState(snapshot);
+    if (snapshot.user) {
+      state.user = snapshot.user;
+      toggleAuthUI(true);
+      updateUserBadge();
+    }
+  }
+}
+
 
 function bootstrapFromStorage() {
   const snapshot = loadStateFromStorage();
