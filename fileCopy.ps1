@@ -21,7 +21,6 @@ if (!(Test-Path $DestinationPath)) {
     New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
 }
 
-# Count source files
 Write-Host "Scanning source..." -ForegroundColor Yellow
 $TotalFiles = (Get-ChildItem $SourcePath -Recurse -File | Measure-Object).Count
 Write-Host "Source contains $TotalFiles files" -ForegroundColor Yellow
@@ -30,11 +29,9 @@ while ($true) {
 
     Write-Host "`nStarting Sync..." -ForegroundColor Green
 
-    # Start Robocopy
     $Arguments = "`"$SourcePath`" `"$DestinationPath`" /MIR /FFT /R:0 /W:0"
     $Process = Start-Process robocopy -ArgumentList $Arguments -NoNewWindow -PassThru
 
-    # Live progress loop
     while (-not $Process.HasExited) {
 
         $Copied = (Get-ChildItem $DestinationPath -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
@@ -52,10 +49,10 @@ while ($true) {
         Start-Sleep -Seconds $ProgressRefresh
     }
 
-    # Completion message
     if ($Process.ExitCode -ge 8) {
         Write-Host "[!] Robocopy Error (exit code $($Process.ExitCode))" -ForegroundColor Red
-    } else {
+    }
+    else {
         Write-Host "[✓] Copy cycle finished (exit code $($Process.ExitCode))" -ForegroundColor Green
     }
 
