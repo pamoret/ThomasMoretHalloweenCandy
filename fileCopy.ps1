@@ -53,7 +53,7 @@ while ($true) {
         Write-Host "[!] Robocopy Error (exit code $($Process.ExitCode))" -ForegroundColor Red
     }
     else {
-        Write-Host "[✓] Copy cycle finished (exit code $($Process.ExitCode))" -ForegroundColor Green
+        WWrite-Host ("Copy cycle finished (exit code {0})" -f $Process.ExitCode) -ForegroundColor Green
     }
 
     Start-Sleep -Seconds $SyncInterval
