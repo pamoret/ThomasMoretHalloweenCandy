@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Network Sync Monitor with LIVE % of Files Copied
+# Network Sync Monitor with LIVE % of Files Copied + Progress Bar
 # ---------------------------------------------------------------------------
 
 $SourcePath      = "\\10.0.0.18\newfolder"
@@ -30,30 +30,40 @@ while ($true) {
     Write-Host "`nStarting Sync..." -ForegroundColor Green
 
     $Arguments = "`"$SourcePath`" `"$DestinationPath`" /MIR /FFT /R:0 /W:0"
-    $Process = Start-Process robocopy -ArgumentList $Arguments -NoNewWindow -PassThru
+    $Process   = Start-Process robocopy -ArgumentList $Arguments -NoNewWindow -PassThru
 
     while (-not $Process.HasExited) {
 
-        $Copied = (Get-ChildItem $DestinationPath -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+        $Copied = (Get-ChildItem $DestinationPath -Recurse -File -ErrorAction SilentlyContinue |
+                   Measure-Object).Count
 
         if ($TotalFiles -gt 0) {
-            $Percent = [Math]::Round(100 * $Copied / $TotalFiles, 1)
+            # Write-Progress wants an integer 0–100
+            $Percent = [int]([Math]::Round(100 * $Copied / $TotalFiles, 0))
         } else {
             $Percent = 100
         }
 
-        $Now = Get-Date -Format "HH:mm:ss"
-        Write-Host ("[{0}] Progress: {1}% ({2}/{3} files)" -f `
-            $Now, $Percent, $Copied, $TotalFiles) -ForegroundColor Yellow
+        $statusText = "{0}% ({1}/{2} files copied)" -f $Percent, $Copied, $TotalFiles
+
+        # This draws the floating bar at the top of the console
+        Write-Progress -Activity "Mirroring files from $SourcePath" `
+                       -Status   $statusText `
+                       -PercentComplete $Percent
 
         Start-Sleep -Seconds $ProgressRefresh
     }
+
+    # Mark progress bar as complete for this cycle
+    Write-Progress -Activity "Mirroring files from $SourcePath" `
+                   -Completed `
+                   -Status "Copy cycle finished (exit code $($Process.ExitCode))"
 
     if ($Process.ExitCode -ge 8) {
         Write-Host "[!] Robocopy Error (exit code $($Process.ExitCode))" -ForegroundColor Red
     }
     else {
-        WWrite-Host ("Copy cycle finished (exit code {0})" -f $Process.ExitCode) -ForegroundColor Green
+        Write-Host ("Copy cycle finished (exit code {0})" -f $Process.ExitCode) -ForegroundColor Green
     }
 
     Start-Sleep -Seconds $SyncInterval
