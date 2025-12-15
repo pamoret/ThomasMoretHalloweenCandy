@@ -6,6 +6,12 @@ Merges two "profile-like" folder trees into a single destination tree.
 - If a file already exists at destination, appends a suffix (_mlbba or _Reeds) before extension.
 - If the suffixed name also exists, appends _2, _3, etc.
 - Preserves relative folder structure (Desktop\..., Documents\..., etc).
+
+Test run example:
+  .\Merge-Profiles.ps1 -DestinationRoot "C:\CopyTo\Combined" -WhatIf -LogPath "C:\CopyTo\merge-test.log"
+
+Real run example:
+  .\Merge-Profiles.ps1 -DestinationRoot "C:\Users\mlbba" -LogPath "C:\CopyTo\merge-real.log"
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -36,12 +42,29 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Initialize-Log {
+    if (-not $LogPath -or $LogPath.Trim() -eq "") { return }
+
+    $logDir = Split-Path -Parent $LogPath
+    if ($logDir -and -not (Test-Path -LiteralPath $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+
+    # Ensure the log exists even during -WhatIf runs
+    if (-not (Test-Path -LiteralPath $LogPath)) {
+        New-Item -ItemType File -Path $LogPath -Force | Out-Null
+    }
+}
+
 function Write-Log {
     param([string]$Message)
+
     $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $line = "[$ts] $Message"
     Write-Host $line
+
     if ($LogPath -and $LogPath.Trim() -ne "") {
+        Initialize-Log
         Add-Content -Path $LogPath -Value $line
     }
 }
@@ -110,7 +133,7 @@ function Copy-TreeNoOverwrite {
 
         Write-Log "Scanning: $srcTop"
 
-        # Copy directories (create them in destination)
+        # Create directories in destination
         Get-ChildItem -LiteralPath $srcTop -Directory -Recurse -Force | ForEach-Object {
             $rel = $_.FullName.Substring($SourceRoot.Length).TrimStart('\')
             $dstDir = Join-Path $DestRoot $rel
@@ -163,6 +186,8 @@ function Copy-TreeNoOverwrite {
 }
 
 # --- Main ---
+Initialize-Log
+
 Write-Log "DestinationRoot = $DestinationRoot"
 Write-Log "Source (mlbba)  = $SourceMlbba"
 Write-Log "Source (Reeds)  = $SourceReeds"
